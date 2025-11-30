@@ -1,0 +1,34 @@
+.container {
+    width: 100vw;
+    height: 100vh;
+    background: #000;
+    position: relative;
+    overflow: hidden;
+    cursor: pointer;
+}
+
+.ledGrid {
+    position: absolute;
+    top: 0;
+    left: 0;
+    display: grid;
+    padding: 0;
+    margin: 0;
+}
+
+.backgroundDot {
+    border-radius: 50%;
+    opacity: 0.08;
+}
+
+.rowsContainer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    z-index: 10;
+}
+
+.rowWrapper {
+    width: 100%;
+}

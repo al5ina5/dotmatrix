@@ -1,29 +1,23 @@
 'use client';
 
-import StaticLEDTicker from '@/components/StaticLEDTicker';
+import MultiLineLEDTicker from '@/components/MultiLineLEDTicker';
 import { LED_CONFIG } from '@/config/led.config';
+import { useDataHydration } from '@/hooks/useDataHydration';
 
 /**
  * LED Ticker Home Page
- * 
- * All configuration is managed in /config/led.config.ts
- * Edit that file to change:
- * - Text content
- * - LED color and size
- * - Animation speed
- * - Spacing between letters/words
  */
 export default function Home() {
+  // Hydrate the rows (fetch data for dynamic plugins)
+  const hydratedRows = useDataHydration(LED_CONFIG.rows);
+
   return (
-    <>
-      <StaticLEDTicker
-        text={'@@@@@'}
-        dotSize={LED_CONFIG.dotSize}
-        dotColor={LED_CONFIG.dotColor}
-        dotGap={LED_CONFIG.dotGap}
-        stepInterval={LED_CONFIG.stepInterval}
-        spacing={LED_CONFIG.spacing}
-      />
-    </>
+    <MultiLineLEDTicker
+      rows={hydratedRows}
+      dotSize={LED_CONFIG.display.dotSize}
+      dotColor={LED_CONFIG.display.dotColor}
+      dotGap={LED_CONFIG.display.dotGap}
+      rowSpacing={LED_CONFIG.layout.rowSpacing}
+    />
   );
 }

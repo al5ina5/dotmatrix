@@ -1,34 +1,70 @@
 # LED Dot Matrix Ticker
 
-A realistic LED ticker display with static bulbs that only change their on/off state to create the scrolling effect.
+A realistic multi-line LED ticker display with static bulbs that only change their on/off state to create scrolling text.
 
 ## 🎯 Features
 
-- **Static LED Grid** - LED bulbs are fixed in position, only their state changes
-- **Authentic Look** - All LEDs are slightly visible when off (like real LED displays)
-- **Click to Pause** - Click anywhere on the display to pause/resume
-- **Fully Customizable** - Easy configuration for colors, sizing, speed, and spacing
+- **Fullscreen Static LED Grid** - LEDs fill entire viewport and stay fixed
+- **Multi-line Support** - Display multiple independently scrolling text rows
+- **Smart Layout** - Rows centered if they fit, cropped if screen is too small
+- **Authentic Look** - All LEDs slightly visible when off (like real displays)
+- **Click to Pause** - Click anywhere to pause/resume all rows
+- **Per-Row Configuration** - Each row can have different text, speed, and spacing
 
 ## ⚙️ Configuration
 
-All settings are managed in **`/config/led.config.ts`**
+All settings in **`/config/led.config.ts`**
 
-### Available Settings:
+### Basic Structure:
+
+```typescript
+export const LED_CONFIG = {
+  // Display Hardware
+  display: {
+    dotSize: 20,          // LED bulb size
+    dotColor: '#00ff00',  // LED color
+    dotGap: 6,            // Space between LEDs
+  },
+  
+  // Layout
+  layout: {
+    rowSpacing: 2,        // Space between text rows (in dots)
+  },
+  
+  // Content (add as many rows as you want!)
+  rows: [
+    {
+      type: 'text',
+      content: 'First line of text',
+      stepInterval: 250,  // Scroll speed
+      color: '#ff0000',   // Optional: Row color
+      spacing: {
+        betweenLetters: 1,
+        betweenWords: 4,
+        beforeRepeat: 12,
+      }
+    },
+    // Add more rows...
+  ]
+}
+```
+
+## 📝 Adding More Rows
+
+Copy-paste this block into the `rows` array:
 
 ```typescript
 {
-  text: 'Your message here',    // The text to display
-  dotSize: 10,                   // LED bulb size in pixels
-  dotColor: '#00ff00',           // LED color (hex)
-  dotGap: 3,                     // Space between LEDs in pixels
-  stepInterval: 150,             // Scroll speed in ms (lower = faster)
-  
+  type: 'text',
+  content: 'YOUR MESSAGE',
+  stepInterval: 250,
+  color: '#0099ff', // Optional color
   spacing: {
-    betweenLetters: 1,           // Dots between letters
-    betweenWords: 4,             // Dots for word spaces  
-    beforeRepeat: 12,            // Dots before text repeats
+    betweenLetters: 1,
+    betweenWords: 4,
+    beforeRepeat: 12,
   }
-}
+},
 ```
 
 ## 📁 Project Structure
@@ -36,41 +72,73 @@ All settings are managed in **`/config/led.config.ts`**
 ```
 dotmatrix/
 ├── app/
-│   └── page.tsx              # Main page (don't modify - uses config)
+│   └── page.tsx                       # Main page
 ├── components/
-│   ├── StaticLEDTicker.tsx   # Main LED ticker component
-│   └── StaticLEDTicker.module.css
+│   ├── MultiLineLEDTicker.tsx        # Multi-line container
+│   ├── MultiLineLEDTicker.module.css
+│   ├── LEDRow.tsx                     # Single row component
+│   └── LEDRow.module.css
 ├── config/
-│   └── led.config.ts         # ⭐ EDIT THIS FILE for all settings
+│   └── led.config.ts                  # ⭐ EDIT HERE
 └── lib/
-    └── patterns.ts            # Character dot patterns (5x7 grid)
+    └── patterns.ts                     # Character patterns
 ```
 
-## 🎨 Popular Color Schemes
+## 🎨 Popular LED Colors
 
-Try these classic LED colors in `led.config.ts`:
-
-- Green: `'#00ff00'` (classic)
-- Red: `'#ff0000'`
-- Amber: `'#ffbf00'`
-- Blue: `'#0099ff'`
-- White: `'#ffffff'`
-- Purple: `'#9d00ff'`
+```typescript
+dotColor: '#00ff00'  // Classic green
+dotColor: '#ff0000'  // Red
+dotColor: '#ffbf00'  // Amber
+dotColor: '#0099ff'  // Blue
+dotColor: '#ffffff'  // White
+```
 
 ## 🚀 Getting Started
 
-1. Edit `/config/led.config.ts` to customize your ticker
+1. Edit `/config/led.config.ts`
 2. Run `npm run dev`
 3. Open [http://localhost:3000](http://localhost:3000)
 4. Click anywhere to pause/resume
 
-## 📝 How It Works
+## 📐 Screen Behavior
 
-Unlike traditional scrolling tickers that move the text, this implementation:
+- **Rows fit**: Content is vertically centered
+- **Too many rows**: Cropped to show max that fits
+- **All screens**: Full LED grid fills entire viewport
+- **Responsive**: Automatically adjusts to window size
 
-1. Creates a fixed grid of LED bulbs covering the viewport
-2. Calculates which LEDs should be "on" based on the text pattern and scroll offset
-3. Steps the offset at regular intervals
-4. Only updates the on/off state of LEDs (no physical movement)
+## 🔮 Future Extensions
 
-This creates an authentic LED display effect where the hardware (LEDs) is static and only the lighting pattern changes.
+The modular architecture supports easy additions:
+
+```typescript
+// Icons (future)
+{ type: 'icon', name: 'arrow-right' }
+
+// Custom symbols (future)
+{ type: 'symbol', pattern: [[1,0,1], ...] }
+```
+
+## 💡 Examples
+
+### Single Large Message (800x480 screen)
+```typescript
+rows: [
+  {
+    type: 'text',
+    content: 'NOW OPEN',
+    stepInterval: 200,
+    spacing: { betweenLetters: 1, betweenWords: 4, beforeRepeat: 12 }
+  }
+]
+```
+
+### Three Different Messages
+```typescript
+rows: [
+  { type: 'text', content: 'WELCOME', stepInterval: 250, ... },
+  { type: 'text', content: 'OPEN 24/7', stepInterval: 200, ... },
+  { type: 'text', content: 'THANK YOU', stepInterval: 180, ... },
+]
+```

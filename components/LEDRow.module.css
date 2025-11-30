@@ -1,0 +1,14 @@
+.row {
+    display: grid;
+    width: 100%;
+}
+
+.dot {
+    border-radius: 50%;
+    opacity: 0;
+    transition: none;
+}
+
+.dot.active {
+    opacity: 1;
+}

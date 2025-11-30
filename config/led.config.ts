@@ -4,21 +4,84 @@
  */
 
 export const LED_CONFIG = {
-    // Text to display
-    text: 'This is a TEST.',
+    // Display Hardware Settings
+    display: {
+        dotSize: 8,
+        dotColor: '#00ff00',
+        dotGap: 2,
+    },
 
-    // Visual settings
-    dotSize: 10,          // Size of each LED bulb in pixels
-    dotColor: '#00ff00',  // Color of the LEDs (hex color)
-    dotGap: 3,            // Gap between LED bulbs in pixels
+    // Layout Settings
+    layout: {
+        rowSpacing: 4,        // Vertical spacing between text rows (in LED dots)
+    },
 
-    // Animation settings
-    stepInterval: 150,    // Time between each scroll step in milliseconds (lower = faster)
-
-    // Spacing settings (in dot columns)
-    spacing: {
-        betweenLetters: 1,  // Dots between letters
-        betweenWords: 4,    // Dots for word spaces
-        beforeRepeat: 12,   // Dots before text repeats
-    }
+    // Content Rows (each row scrolls independently)
+    rows: [
+        {
+            type: 'dynamic',
+            pluginId: 'clock',
+            params: { format: '12h', showSeconds: true },
+            refreshInterval: 1000,
+            stepInterval: 300,
+            scrolling: false,
+            alignment: 'center',
+            spacing: {
+                betweenLetters: 1,
+                betweenWords: 4,
+                beforeRepeat: 12,
+            }
+        },
+        {
+            type: 'dynamic',
+            pluginId: 'weather',
+            params: { city: 'Tokyo', unit: 'C' },
+            stepInterval: 300,
+            color: '#0099ff',
+            spacing: {
+                betweenLetters: 1,
+                betweenWords: 4,
+                beforeRepeat: 12,
+            }
+        },
+        {
+            type: 'dynamic',
+            pluginId: 'movies',
+            params: { limit: 10, },
+            stepInterval: 60, // Faster scroll for ticker
+            color: '#ffbf00',  // Amber/Gold color for cinema feel
+            spacing: {
+                betweenLetters: 1,
+                betweenWords: 4,
+                beforeRepeat: 20,
+            }
+        },
+    ]
 } as const;
+
+// Define the types for our configuration
+export type BaseRowConfig = {
+    stepInterval: number;
+    color?: string;
+    scrolling?: boolean; // Default: true
+    alignment?: 'left' | 'center' | 'right'; // Default: 'left' (only applies if scrolling is false)
+    spacing: {
+        betweenLetters: number;
+        betweenWords: number;
+        beforeRepeat: number;
+    };
+};
+
+export type StaticRowConfig = BaseRowConfig & {
+    type: 'text';
+    content: string;
+};
+
+export type DynamicRowConfig = BaseRowConfig & {
+    type: 'dynamic';
+    pluginId: string;
+    params?: any;
+    refreshInterval?: number;
+};
+
+export type LEDRowConfig = StaticRowConfig | DynamicRowConfig;

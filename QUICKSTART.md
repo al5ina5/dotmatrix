@@ -2,38 +2,61 @@
 
 ## 🎯 Where to Make Changes
 
-### Want to change the text, colors, or speed?
+### Want to change text, colors, or add more rows?
 **Edit this file:** `/config/led.config.ts`
 
 ```typescript
 export const LED_CONFIG = {
-  text: 'Your message here',     // ← Change your message
-  dotSize: 10,                    // ← Make LEDs bigger/smaller
-  dotColor: '#00ff00',            // ← Change LED color
-  dotGap: 3,                      // ← Adjust spacing between LEDs
-  stepInterval: 150,              // ← Speed (lower = faster)
+  // Display Hardware Settings
+  display: {
+    dotSize: 20,           // ← LED size
+    dotColor: '#00ff00',   // ← LED color
+    dotGap: 6,             // ← Space between LEDs
+  },
   
-  spacing: {
-    betweenLetters: 1,            // ← Dots between letters
-    betweenWords: 4,              // ← Dots between words
-    beforeRepeat: 12,             // ← Gap before text loops
-  }
+  // Layout Settings
+  layout: {
+    rowSpacing: 20,        // ← Vertical space between rows
+  },
+  
+  // Content Rows (add as many as you want!)
+  rows: [
+    {
+      type: 'text',
+      content: 'First line',     // ← Your text
+      stepInterval: 250,          // ← Speed (lower = faster)
+      spacing: {
+        betweenLetters: 1,
+        betweenWords: 4,
+        beforeRepeat: 12,
+      }
+    },
+    // Add more rows here! Copy-paste the block above
+  ]
 }
 ```
 
-## 📂 File Overview
+## 📝 How to Add a New Row
 
-| File | Purpose | Should You Edit? |
-|------|---------|------------------|
-| `/config/led.config.ts` | **All settings** | ✅ **YES** - Edit this! |
-| `/app/page.tsx` | Main page | ❌ No need (uses config) |
-| `/components/StaticLEDTicker.tsx` | LED component | ❌ No (works automatically) |
-| `/lib/patterns.ts` | Character shapes | ⚠️ Only for custom fonts |
+Just copy-paste this into the `rows` array:
+
+```typescript
+{
+  type: 'text',
+  content: 'YOUR MESSAGE HERE',
+  stepInterval: 250,
+  spacing: {
+    betweenLetters: 1,
+    betweenWords: 4,
+    beforeRepeat: 12,
+  }
+},
+```
 
 ## 🎨 Quick Color Changes
 
-Replace `dotColor` in config with:
-- Classic green: `'#00ff00'`
+Replace `dotColor` with:
+- Green: `'#00ff00'`
 - Red: `'#ff0000'`
 - Amber: `'#ffbf00'`
 - Blue: `'#0099ff'`
@@ -41,11 +64,17 @@ Replace `dotColor` in config with:
 
 ## ⚡ Quick Speed Changes
 
-Adjust `stepInterval` in config:
+Adjust `stepInterval` for each row:
 - Slow: `300`
 - Normal: `150`
 - Fast: `75`
-- Very fast: `50`
+
+## 📐 Screen Layout
+
+- **Rows fit on screen**: Automatically centered
+- **Too many rows**: Automatically cropped (shows as many as fit)
+- **Full screen**: Static LED grid fills entire viewport
+- **Click anywhere**: Pause/resume all rows
 
 ## 🎯 That's it!
 
