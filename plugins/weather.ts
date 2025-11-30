@@ -11,6 +11,33 @@ export const WeatherPlugin: LEDPlugin<WeatherParams> = {
     name: 'Weather',
     description: 'Real weather from Open-Meteo (No Key Required)',
     defaultInterval: 600000, // 10 minutes
+    configSchema: [
+        {
+            key: 'zipCode',
+            type: 'text',
+            label: 'Zip Code',
+            defaultValue: '10001',
+            placeholder: 'Enter zip code',
+            required: true
+        },
+        {
+            key: 'countryCode',
+            type: 'text',
+            label: 'Country Code',
+            defaultValue: 'us',
+            placeholder: 'e.g., us, ca, uk'
+        },
+        {
+            key: 'unit',
+            type: 'select',
+            label: 'Temperature Unit',
+            defaultValue: 'F',
+            options: [
+                { value: 'F', label: 'Fahrenheit' },
+                { value: 'C', label: 'Celsius' }
+            ]
+        }
+    ],
 
     fetch: async ({ zipCode = '10001', countryCode = 'us', unit = 'F' }) => {
         try {

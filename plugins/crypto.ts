@@ -1,12 +1,7 @@
 import { LEDPlugin } from './types';
 
-interface CoinConfig {
-    id: string;      // CoinGecko ID (e.g., 'bitcoin', 'ethereum')
-    symbol: string;  // Display symbol (e.g., 'BTC', 'ETH')
-}
-
 interface CryptoParams {
-    coins: CoinConfig[];
+    coins: string[];  // CoinGecko IDs (e.g., 'bitcoin', 'ethereum', 'sonic-3')
     currency?: string;
 }
 
@@ -15,12 +10,46 @@ export const CryptoPlugin: LEDPlugin<CryptoParams> = {
     name: 'Crypto Ticker',
     description: 'Live crypto prices from CoinGecko (Free)',
     defaultInterval: 60000, // 1 minute (CoinGecko free tier limit friendly)
+    configSchema: [
+        {
+            key: 'coins',
+            type: 'array',
+            label: 'Coins to Track',
+            defaultValue: ['bitcoin', 'ethereum'],
+            placeholder: 'bitcoin, ethereum, sonic-3'
+        },
+        {
+            key: 'currency',
+            type: 'select',
+            label: 'Currency',
+            defaultValue: 'usd',
+            options: [
+                { value: 'usd', label: 'USD' },
+                { value: 'eur', label: 'EUR' },
+                { value: 'gbp', label: 'GBP' }
+            ]
+        }
+    ],
 
     fetch: async ({ coins, currency = 'usd' }) => {
         try {
             if (!coins || coins.length === 0) return 'No coins configured';
 
-            const ids = coins.map(c => c.id).join(',');
+            // Common coin ID to symbol mapping
+            const symbolMap: Record<string, string> = {
+                'bitcoin': 'BTC',
+                'ethereum': 'ETH',
+                'sonic-3': 'S',
+                'solana': 'SOL',
+                'cardano': 'ADA',
+                'ripple': 'XRP',
+                'polkadot': 'DOT',
+                'dogecoin': 'DOGE',
+                'avalanche-2': 'AVAX',
+                'chainlink': 'LINK'
+            };
+
+            const ids = coins.join(',');
             const url = `https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=${currency}`;
 
             const response = await fetch(url);
@@ -33,9 +62,11 @@ export const CryptoPlugin: LEDPlugin<CryptoParams> = {
             const data = await response.json();
 
             // Format: "BTC: $95,000  ETH: $3,200  S: $0.85"
-            const parts = coins.map(coin => {
-                const price = data[coin.id]?.[currency];
-                if (price === undefined) return `${coin.symbol}: ???`;
+            const parts = coins.map(coinId => {
+                const price = data[coinId]?.[currency];
+                const symbol = symbolMap[coinId] || coinId.toUpperCase().slice(0, 4);
+                
+                if (price === undefined) return `${symbol}: ???`;
 
                 // Format price nicely
                 let priceStr = price.toString();
@@ -43,9 +74,11 @@ export const CryptoPlugin: LEDPlugin<CryptoParams> = {
                     priceStr = price.toLocaleString('en-US', { maximumFractionDigits: 0 });
                 } else if (price < 1) {
                     priceStr = price.toFixed(4);
+                } else {
+                    priceStr = price.toFixed(2);
                 }
 
-                return `${coin.symbol}: $${priceStr}`;
+                return `${symbol}: $${priceStr}`;
             });
 
             return parts.join('   ');

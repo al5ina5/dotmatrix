@@ -1,24 +1,62 @@
 'use client';
 
+import { useState, useEffect, useRef } from 'react';
 import CanvasLEDTicker from '@/components/CanvasLEDTicker';
-import { LED_CONFIG } from '@/config/led.config';
+import { Settings } from '@/components/Settings';
+import { useConfig } from '@/context/ConfigContext';
 import { useDataHydration } from '@/hooks/useDataHydration';
 
 /**
  * LED Ticker Home Page
  */
 export default function Home() {
+  const config = useConfig();
+  
   // Hydrate the rows (fetch data for dynamic plugins)
-  const hydratedRows = useDataHydration(LED_CONFIG.rows);
+  const hydratedRows = useDataHydration(config.rows);
+  const [showSettings, setShowSettings] = useState(false);
+  const holdTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const handlePointerDown = () => {
+    holdTimerRef.current = setTimeout(() => {
+      setShowSettings(true);
+    }, 800); // Hold for 800ms to open settings
+  };
+
+  const handlePointerUp = () => {
+    if (holdTimerRef.current) {
+      clearTimeout(holdTimerRef.current);
+      holdTimerRef.current = null;
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      if (holdTimerRef.current) {
+        clearTimeout(holdTimerRef.current);
+      }
+    };
+  }, []);
 
   return (
-    <CanvasLEDTicker
-      rows={hydratedRows}
-      dotSize={LED_CONFIG.display.dotSize}
-      dotColor={LED_CONFIG.display.dotColor}
-      dotGap={LED_CONFIG.display.dotGap}
-      rowSpacing={LED_CONFIG.layout.rowSpacing}
-      pageInterval={LED_CONFIG.layout.pageInterval}
-    />
+    <>
+      {showSettings && <Settings onClose={() => setShowSettings(false)} />}
+      <div
+        onPointerDown={handlePointerDown}
+        onPointerUp={handlePointerUp}
+        onPointerLeave={handlePointerUp}
+        onPointerCancel={handlePointerUp}
+        style={{ width: '100%', height: '100vh' }}
+      >
+        <CanvasLEDTicker
+          rows={hydratedRows}
+          dotSize={config.dotSize}
+          dotColor={config.dotColor}
+          dotGap={config.dotGap}
+          rowSpacing={config.rowSpacing}
+          pageInterval={config.pageInterval}
+        />
+      </div>
+    </>
   );
 }

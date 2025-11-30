@@ -73,29 +73,41 @@ const verticalOffset = Math.floor(unusedRows / 2) * cellSize;
 
 ### Adding Icons
 ```typescript
-// In LEDRow component
-if (row.type === 'icon') {
-  return <IconPattern icon={row.name} />;
-}
+// Create an IconPlugin in plugins/icon.ts
+export const IconPlugin: LEDPlugin = {
+  id: 'icon',
+  name: 'Icon Display',
+  configSchema: [
+    { key: 'iconName', label: 'Icon', type: 'select', options: [...] }
+  ],
+  fetch: async (params) => {
+    return getIconPattern(params.iconName);
+  }
+};
 ```
 
 ### Adding Custom Symbols
 ```typescript
+// Create a SymbolPlugin
 {
-  type: 'symbol',
-  pattern: [
-    [1, 0, 1, 0, 1],
-    [0, 1, 0, 1, 0],
-    // ... 7 rows total
-  ]
+  pluginId: 'symbol',
+  params: {
+    pattern: [
+      [1, 0, 1, 0, 1],
+      [0, 1, 0, 1, 0],
+      // ... 7 rows total
+    ]
+  }
 }
 ```
 
 ### Adding Effects
 ```typescript
 {
-  type: 'text',
-  content: 'FLASH',
-  effect: 'blink',  // Future: blink, wave, ripple, etc.
+  pluginId: 'text',
+  params: { 
+    content: 'FLASH',
+    effect: 'blink'  // Future: blink, wave, ripple, etc.
+  }
 }
 ```

@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { SWRConfig } from "swr";
 import "./globals.css";
+import { ConfigProvider } from "@/context/ConfigContext";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -27,7 +29,23 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        {children}
+        <SWRConfig
+          value={{
+            // Global SWR configuration to prevent API spamming
+            revalidateOnFocus: false,      // Don't refetch when window regains focus
+            revalidateOnReconnect: false,  // Don't refetch when reconnecting
+            revalidateIfStale: false,      // Don't refetch stale data automatically
+            dedupingInterval: 5000,        // Dedupe requests within 5 seconds
+            shouldRetryOnError: true,      // Retry failed requests
+            errorRetryCount: 3,            // Max 3 retries
+            errorRetryInterval: 5000,      // Wait 5s between retries
+            // Only revalidate based on refreshInterval (set per plugin)
+          }}
+        >
+          <ConfigProvider>
+            {children}
+          </ConfigProvider>
+        </SWRConfig>
       </body>
     </html>
   );

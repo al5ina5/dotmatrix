@@ -7,8 +7,8 @@ export const LED_CONFIG = {
     // Display Hardware Settings
     display: {
         dotSize: 6,
-        dotColor: '#00ff00',
         dotGap: 2,
+        dotColor: '#00ff00', // Default LED color (green)
     },
 
     // Layout Settings
@@ -21,7 +21,6 @@ export const LED_CONFIG = {
     rows: [
         // --- PAGE 1: Essentials ---
         {
-            type: 'dynamic',
             pluginId: 'clock',
             params: { format: '12h', showSeconds: true },
             refreshInterval: 1000,
@@ -31,7 +30,6 @@ export const LED_CONFIG = {
             spacing: { betweenLetters: 1, betweenWords: 4, beforeRepeat: 12 }
         },
         {
-            type: 'dynamic',
             pluginId: 'weather',
             params: { zipCode: '34120', unit: 'F' },
             stepInterval: 120,
@@ -39,14 +37,9 @@ export const LED_CONFIG = {
             spacing: { betweenLetters: 1, betweenWords: 4, beforeRepeat: 12 }
         },
         {
-            type: 'dynamic',
             pluginId: 'crypto',
             params: {
-                coins: [
-                    { id: 'bitcoin', symbol: 'BTC' },
-                    { id: 'ethereum', symbol: 'ETH' },
-                    { id: 'sonic-3', symbol: 'S' }
-                ]
+                coins: ['bitcoin', 'ethereum', 'sonic-3']
             },
             stepInterval: 120,
             color: '#00ff00',
@@ -55,14 +48,12 @@ export const LED_CONFIG = {
 
         // // --- PAGE 2: News & Info ---
         // {
-        //     type: 'dynamic',
         //     pluginId: 'hackernews',
         //     stepInterval: 50,
         //     color: '#ff61200', // HN Orange
         //     spacing: { betweenLetters: 1, betweenWords: 4, beforeRepeat: 20 }
         // },
         // {
-        //     type: 'dynamic',
         //     pluginId: 'worldclock',
         //     params: {
         //         timezones: [
@@ -76,7 +67,6 @@ export const LED_CONFIG = {
         //     spacing: { betweenLetters: 1, betweenWords: 4, beforeRepeat: 20 }
         // },
         // {
-        //     type: 'dynamic',
         //     pluginId: 'iss',
         //     stepInterval: 80,
         //     color: '#ffffff',
@@ -85,21 +75,18 @@ export const LED_CONFIG = {
 
         // // --- PAGE 3: Fun & Random ---
         // {
-        //     type: 'dynamic',
         //     pluginId: 'jokes',
         //     stepInterval: 120,
         //     color: '#ffff00',
         //     spacing: { betweenLetters: 1, betweenWords: 4, beforeRepeat: 20 }
         // },
         // {
-        //     type: 'dynamic',
         //     pluginId: 'facts',
         //     stepInterval: 120,
         //     color: '#00ffff',
         //     spacing: { betweenLetters: 1, betweenWords: 4, beforeRepeat: 20 }
         // },
         // {
-        //     type: 'dynamic',
         //     pluginId: 'catfacts',
         //     stepInterval: 120,
         //     color: '#ff9999',
@@ -108,7 +95,6 @@ export const LED_CONFIG = {
 
         // // --- PAGE 4: System & Misc ---
         // {
-        //     type: 'dynamic',
         //     pluginId: 'holidays',
         //     params: { countryCode: 'US' },
         //     stepInterval: 100,
@@ -116,7 +102,6 @@ export const LED_CONFIG = {
         //     spacing: { betweenLetters: 1, betweenWords: 4, beforeRepeat: 20 }
         // },
         // {
-        //     type: 'dynamic',
         //     pluginId: 'sun',
         //     params: { lat: 40.71, lng: -74.00 }, // NYC
         //     stepInterval: 100,
@@ -124,7 +109,6 @@ export const LED_CONFIG = {
         //     spacing: { betweenLetters: 1, betweenWords: 4, beforeRepeat: 20 }
         // },
         // {
-        //     type: 'dynamic',
         //     pluginId: 'system',
         //     stepInterval: 100,
         //     color: '#666666',
@@ -134,7 +118,10 @@ export const LED_CONFIG = {
 } as const;
 
 // Define the types for our configuration
-export type BaseRowConfig = {
+export type LEDRowConfig = {
+    pluginId: string;
+    params?: any;
+    refreshInterval?: number;
     stepInterval: number;
     color?: string;
     scrolling?: boolean; // Default: true
@@ -145,17 +132,3 @@ export type BaseRowConfig = {
         beforeRepeat: number;
     };
 };
-
-export type StaticRowConfig = BaseRowConfig & {
-    type: 'text';
-    content: string;
-};
-
-export type DynamicRowConfig = BaseRowConfig & {
-    type: 'dynamic';
-    pluginId: string;
-    params?: any;
-    refreshInterval?: number;
-};
-
-export type LEDRowConfig = StaticRowConfig | DynamicRowConfig;

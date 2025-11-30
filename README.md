@@ -34,8 +34,8 @@ export const LED_CONFIG = {
   // Content (add as many rows as you want!)
   rows: [
     {
-      type: 'text',
-      content: 'First line of text',
+      pluginId: 'text',
+      params: { content: 'First line of text' },
       stepInterval: 250,  // Scroll speed
       color: '#ff0000',   // Optional: Row color
       spacing: {
@@ -55,8 +55,8 @@ Copy-paste this block into the `rows` array:
 
 ```typescript
 {
-  type: 'text',
-  content: 'YOUR MESSAGE',
+  pluginId: 'text',
+  params: { content: 'YOUR MESSAGE' },
   stepInterval: 250,
   color: '#0099ff', // Optional color
   spacing: {
@@ -126,8 +126,8 @@ The modular architecture supports easy additions:
 ```typescript
 rows: [
   {
-    type: 'text',
-    content: 'NOW OPEN',
+    pluginId: 'text',
+    params: { content: 'NOW OPEN' },
     stepInterval: 200,
     spacing: { betweenLetters: 1, betweenWords: 4, beforeRepeat: 12 }
   }
@@ -137,8 +137,8 @@ rows: [
 ### Three Different Messages
 ```typescript
 rows: [
-  { type: 'text', content: 'WELCOME', stepInterval: 250, ... },
-  { type: 'text', content: 'OPEN 24/7', stepInterval: 200, ... },
-  { type: 'text', content: 'THANK YOU', stepInterval: 180, ... },
+  { pluginId: 'text', params: { content: 'WELCOME' }, stepInterval: 250, ... },
+  { pluginId: 'text', params: { content: 'OPEN 24/7' }, stepInterval: 200, ... },
+  { pluginId: 'text', params: { content: 'THANK YOU' }, stepInterval: 180, ... },
 ]
 ```

@@ -10,6 +10,24 @@ export const ClockPlugin: LEDPlugin<ClockParams> = {
     name: 'Digital Clock',
     description: 'Displays current time',
     defaultInterval: 1000, // Update every second
+    configSchema: [
+        {
+            key: 'format',
+            type: 'select',
+            label: 'Time Format',
+            defaultValue: '12h',
+            options: [
+                { value: '12h', label: '12 Hour' },
+                { value: '24h', label: '24 Hour' }
+            ]
+        },
+        {
+            key: 'showSeconds',
+            type: 'boolean',
+            label: 'Show Seconds',
+            defaultValue: true
+        }
+    ],
 
     fetch: ({ format = '24h', showSeconds = true }) => {
         const now = new Date();

@@ -22,8 +22,8 @@ export const LED_CONFIG = {
   // Content Rows (add as many as you want!)
   rows: [
     {
-      type: 'text',
-      content: 'First line',     // ← Your text
+      pluginId: 'text',
+      params: { content: 'First line' },     // ← Your text
       stepInterval: 250,          // ← Speed (lower = faster)
       spacing: {
         betweenLetters: 1,
@@ -42,8 +42,8 @@ Just copy-paste this into the `rows` array:
 
 ```typescript
 {
-  type: 'text',
-  content: 'YOUR MESSAGE HERE',
+  pluginId: 'text',
+  params: { content: 'YOUR MESSAGE HERE' },
   stepInterval: 250,
   spacing: {
     betweenLetters: 1,
