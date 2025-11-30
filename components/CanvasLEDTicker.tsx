@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { LEDRowConfig } from '@/config/led.config';
 import { getPattern } from '@/lib/patterns';
 import { HydratedRow } from '@/hooks/useDataHydration';
@@ -11,6 +11,7 @@ interface CanvasLEDTickerProps {
     dotColor: number | string; // Accept hex string
     dotGap: number;
     rowSpacing: number;
+    pageInterval: number;
 }
 
 // Helper to parse hex color to RGB for alpha manipulation
@@ -29,6 +30,7 @@ export default function CanvasLEDTicker({
     dotColor,
     dotGap,
     rowSpacing,
+    pageInterval,
 }: CanvasLEDTickerProps) {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const containerRef = useRef<HTMLDivElement>(null);
@@ -36,6 +38,15 @@ export default function CanvasLEDTicker({
     // Use refs for mutable state to avoid re-triggering the effect loop
     const rowsRef = useRef(rows);
     rowsRef.current = rows;
+
+    // Pagination State
+    const [currentPage, setCurrentPage] = useState(0);
+    const pageStateRef = useRef({
+        currentPage: 0,
+        lastPageSwitch: 0,
+        totalPages: 1,
+        rowsPerPage: 1
+    });
 
     const stateRef = useRef<{
         [key: number]: {
@@ -67,6 +78,25 @@ export default function CanvasLEDTicker({
             // Set CSS size
             canvas.style.width = `${window.innerWidth}px`;
             canvas.style.height = `${window.innerHeight}px`;
+
+            // Recalculate pagination on resize
+            const pitch = dotSize + dotGap;
+            const totalGridRows = Math.ceil(window.innerHeight / pitch);
+            const textRowHeight = 7;
+            const rowsPerBlock = textRowHeight + rowSpacing;
+
+            // Calculate how many rows fit
+            const rowsPerPage = Math.max(1, Math.floor(totalGridRows / rowsPerBlock));
+            const totalPages = Math.ceil(rowsRef.current.length / rowsPerPage);
+
+            pageStateRef.current.rowsPerPage = rowsPerPage;
+            pageStateRef.current.totalPages = totalPages;
+
+            // Reset to page 0 if out of bounds
+            if (pageStateRef.current.currentPage >= totalPages) {
+                pageStateRef.current.currentPage = 0;
+                setCurrentPage(0);
+            }
         };
 
         window.addEventListener('resize', handleResize);
@@ -74,6 +104,20 @@ export default function CanvasLEDTicker({
 
         // --- RENDER LOOP ---
         const render = (timestamp: number) => {
+            // --- Page Switching Logic ---
+            // Only switch pages if we actually have more content than fits on one screen
+            if (pageStateRef.current.totalPages > 1) {
+                if (timestamp - pageStateRef.current.lastPageSwitch > pageInterval) {
+                    pageStateRef.current.currentPage = (pageStateRef.current.currentPage + 1) % pageStateRef.current.totalPages;
+                    pageStateRef.current.lastPageSwitch = timestamp;
+                }
+            } else {
+                // Force page 0 if everything fits
+                if (pageStateRef.current.currentPage !== 0) {
+                    pageStateRef.current.currentPage = 0;
+                }
+            }
+
             const width = window.innerWidth;
             const height = window.innerHeight;
             const pitch = dotSize + dotGap;
@@ -85,13 +129,18 @@ export default function CanvasLEDTicker({
             ctx.fillStyle = '#000000';
             ctx.fillRect(0, 0, width, height);
 
-            // --- 1. Calculate Layout ---
+            // --- 1. Calculate Layout for Current Page ---
+            const { rowsPerPage, currentPage } = pageStateRef.current;
             const textRowHeight = 7;
             const rowsPerBlock = textRowHeight + rowSpacing;
 
+            // Get rows for this page
+            const startIndex = currentPage * rowsPerPage;
+            const endIndex = Math.min(startIndex + rowsPerPage, rowsRef.current.length);
+            const visibleRows = rowsRef.current.slice(startIndex, endIndex);
+
             // Calculate visual height (excluding last margin)
-            const activeRows = rowsRef.current;
-            const visualContentRowsInDots = (activeRows.length * textRowHeight) + (Math.max(0, activeRows.length - 1) * rowSpacing);
+            const visualContentRowsInDots = (visibleRows.length * textRowHeight) + (Math.max(0, visibleRows.length - 1) * rowSpacing);
             const unusedRows = totalRows - visualContentRowsInDots;
             const startGridRow = Math.floor(unusedRows / 2);
 
@@ -103,13 +152,13 @@ export default function CanvasLEDTicker({
 
             ctx.fillStyle = dimStyle;
 
-            // Optimization: Draw circles is expensive. 
+            // Optimization: Draw circles is expensive.
             // For 20k dots, drawing rects is much faster and looks similar at small sizes.
             // If dotSize > 4, we can try circles, but rects are safer for Pi.
             // Let's stick to rects for raw performance, or rounded rects if possible.
             // Actually, let's do circles but optimized.
-            // Better yet: Path2D? 
-            // Fastest: fillRect. Let's use fillRect for the "pixels". 
+            // Better yet: Path2D?
+            // Fastest: fillRect. Let's use fillRect for the "pixels".
             // Real LED screens often look like square pixels anyway.
 
             for (let r = 0; r < totalRows; r++) {
@@ -119,12 +168,15 @@ export default function CanvasLEDTicker({
             }
 
             // --- 3. Draw Active Rows ---
-            activeRows.forEach((rowConfig, rowIndex) => {
+            visibleRows.forEach((rowConfig, i) => {
+                // Original index is crucial for state persistence
+                const originalIndex = startIndex + i;
+
                 // Initialize state if needed
-                if (!stateRef.current[rowIndex]) {
-                    stateRef.current[rowIndex] = { offset: 0, lastTick: timestamp };
+                if (!stateRef.current[originalIndex]) {
+                    stateRef.current[originalIndex] = { offset: 0, lastTick: timestamp };
                 }
-                const state = stateRef.current[rowIndex];
+                const state = stateRef.current[originalIndex];
 
                 // Update Animation State
                 if (rowConfig.scrolling !== false && !document.hidden) {
@@ -132,10 +184,13 @@ export default function CanvasLEDTicker({
                         state.offset++;
                         state.lastTick = timestamp;
                     }
+                } else {
+                    // If paused/hidden, update lastTick so we don't jump when resuming
+                    state.lastTick = timestamp;
                 }
 
                 // Calculate Row Position
-                const gridRowStart = startGridRow + (rowIndex * rowsPerBlock);
+                const gridRowStart = startGridRow + (i * rowsPerBlock);
 
                 // Prepare Content Logic
                 const content = rowConfig.content;
@@ -148,8 +203,8 @@ export default function CanvasLEDTicker({
 
                 // Pre-calc positions (this could be memoized but it's fast enough)
                 let currentPos = 0;
-                for (let i = 0; i < content.length; i++) {
-                    const char = content[i];
+                for (let k = 0; k < content.length; k++) {
+                    const char = content[k];
                     charPositions.push(currentPos);
                     patterns.push(getPattern(char));
 
@@ -157,7 +212,7 @@ export default function CanvasLEDTicker({
                         currentPos += spacing.betweenWords;
                     } else {
                         currentPos += 5; // Char width
-                        if (i < content.length - 1 && content[i + 1] !== ' ') {
+                        if (k < content.length - 1 && content[k + 1] !== ' ') {
                             currentPos += spacing.betweenLetters;
                         }
                     }
@@ -200,7 +255,7 @@ export default function CanvasLEDTicker({
                         if (rowConfig.scrolling === false && charColIndex >= contentWidth) continue;
 
                         // Find which char this column belongs to
-                        // This search is the bottleneck. 
+                        // This search is the bottleneck.
                         // Optimization: We can map column -> char index directly if we pre-calc.
                         // But let's try the simple loop first.
 
@@ -210,18 +265,18 @@ export default function CanvasLEDTicker({
                         // Binary search? Maybe.
                         // Simple optimization: check bounds.
 
-                        for (let i = 0; i < content.length; i++) {
-                            const start = charPositions[i];
+                        for (let k = 0; k < content.length; k++) {
+                            const start = charPositions[k];
                             // If we passed the possible char, break
                             if (start > charColIndex) break;
 
-                            const char = content[i];
+                            const char = content[k];
                             const width = char === ' ' ? spacing.betweenWords : 5;
 
                             if (charColIndex >= start && charColIndex < start + width) {
                                 if (char !== ' ') {
                                     const colInChar = charColIndex - start;
-                                    const pattern = patterns[i];
+                                    const pattern = patterns[k];
                                     if (pattern && pattern[r] && pattern[r][colInChar] === 1) {
                                         isActive = true;
                                     }
@@ -254,7 +309,7 @@ export default function CanvasLEDTicker({
             window.removeEventListener('resize', handleResize);
             cancelAnimationFrame(animationFrameId);
         };
-    }, [dotSize, dotColor, dotGap, rowSpacing]); // Re-init if layout config changes
+    }, [dotSize, dotColor, dotGap, rowSpacing, pageInterval]); // Re-init if layout config changes
 
     return (
         <div ref={containerRef} style={{ width: '100vw', height: '100vh', background: 'black', overflow: 'hidden' }}>

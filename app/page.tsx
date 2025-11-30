@@ -18,6 +18,7 @@ export default function Home() {
       dotColor={LED_CONFIG.display.dotColor}
       dotGap={LED_CONFIG.display.dotGap}
       rowSpacing={LED_CONFIG.layout.rowSpacing}
+      pageInterval={LED_CONFIG.layout.pageInterval}
     />
   );
 }
