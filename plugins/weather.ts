@@ -1,35 +1,52 @@
 import { LEDPlugin } from './types';
 
 interface WeatherParams {
-    city?: string;
+    zipCode?: string;
+    countryCode?: string; // Default 'us'
     unit?: 'C' | 'F';
 }
 
-// This is a mock plugin for now, but demonstrates async fetching
 export const WeatherPlugin: LEDPlugin<WeatherParams> = {
     id: 'weather',
     name: 'Weather',
-    description: 'Displays current weather (Mock)',
+    description: 'Real weather from Open-Meteo (No Key Required)',
     defaultInterval: 600000, // 10 minutes
 
-    fetch: async ({ city = 'New York', unit = 'C' }) => {
-        // Simulate API delay
-        await new Promise(resolve => setTimeout(resolve, 500));
+    fetch: async ({ zipCode = '10001', countryCode = 'us', unit = 'F' }) => {
+        try {
+            // 1. Get Lat/Long from Zip Code (No Key)
+            const geoRes = await fetch(`https://api.zippopotam.us/${countryCode}/${zipCode}`);
+            if (!geoRes.ok) throw new Error('Invalid Zip Code');
+            const geoData = await geoRes.json();
 
-        // Mock data - in a real plugin this would fetch from OpenWeatherMap etc.
-        const temps = {
-            'New York': 22,
-            'London': 15,
-            'Tokyo': 26,
-            'Paris': 18
-        };
+            const lat = geoData.places[0].latitude;
+            const lon = geoData.places[0].longitude;
+            const city = geoData.places[0]['place name'];
 
-        const baseTemp = temps[city as keyof typeof temps] || 20;
-        const temp = unit === 'F' ? (baseTemp * 9 / 5) + 32 : baseTemp;
+            // 2. Get Weather from Open-Meteo (No Key)
+            const tempUnit = unit === 'F' ? 'fahrenheit' : 'celsius';
+            const weatherRes = await fetch(
+                `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code&temperature_unit=${tempUnit}`
+            );
+            if (!weatherRes.ok) throw new Error('Weather API Error');
+            const weatherData = await weatherRes.json();
 
-        const conditions = ['Sunny', 'Cloudy', 'Rainy', 'Clear'];
-        const condition = conditions[Math.floor(Math.random() * conditions.length)];
+            const temp = Math.round(weatherData.current.temperature_2m);
+            const code = weatherData.current.weather_code;
 
-        return `${city}: ${Math.round(temp)}°${unit} ${condition}`;
+            // Map WMO codes to text
+            let condition = 'Clear';
+            if (code >= 1 && code <= 3) condition = 'Cloudy';
+            else if (code >= 45 && code <= 48) condition = 'Fog';
+            else if (code >= 51 && code <= 67) condition = 'Rain';
+            else if (code >= 71 && code <= 77) condition = 'Snow';
+            else if (code >= 80 && code <= 82) condition = 'Rain';
+            else if (code >= 95) condition = 'Storm';
+
+            return `${temp}°${unit} ${condition} in ${city}!`;
+        } catch (error) {
+            console.error('Weather plugin error:', error);
+            return 'Weather Unavailable';
+        }
     }
 };

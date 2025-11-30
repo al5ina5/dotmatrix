@@ -35,8 +35,8 @@ export const LED_CONFIG = {
         {
             type: 'dynamic',
             pluginId: 'weather',
-            params: { city: 'Tokyo', unit: 'C' },
-            stepInterval: 300,
+            params: { zipCode: '34120', unit: 'F' },
+            stepInterval: 60,
             color: '#0099ff',
             spacing: {
                 betweenLetters: 1,
@@ -50,6 +50,42 @@ export const LED_CONFIG = {
             params: { limit: 10, },
             stepInterval: 60, // Faster scroll for ticker
             color: '#ffbf00',  // Amber/Gold color for cinema feel
+            spacing: {
+                betweenLetters: 1,
+                betweenWords: 4,
+                beforeRepeat: 20,
+            }
+        },
+        {
+            type: 'dynamic',
+            pluginId: 'crypto',
+            params: {
+                coins: [
+                    { id: 'bitcoin', symbol: 'BTC' },
+                    { id: 'ethereum', symbol: 'ETH' },
+                    { id: 'sonic-3', symbol: 'S' }
+                ]
+            },
+            stepInterval: 60,
+            color: '#00ff00',
+            spacing: {
+                betweenLetters: 1,
+                betweenWords: 4,
+                beforeRepeat: 20,
+            }
+        },
+        {
+            type: 'dynamic',
+            pluginId: 'crypto',
+            params: {
+                coins: [
+                    { id: 'bitcoin', symbol: 'BTC' },
+                    { id: 'ethereum', symbol: 'ETH' },
+                    { id: 'sonic-3', symbol: 'S' }
+                ]
+            },
+            stepInterval: 60,
+            color: '#00ff00',
             spacing: {
                 betweenLetters: 1,
                 betweenWords: 4,

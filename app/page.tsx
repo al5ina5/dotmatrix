@@ -1,6 +1,6 @@
 'use client';
 
-import MultiLineLEDTicker from '@/components/MultiLineLEDTicker';
+import CanvasLEDTicker from '@/components/CanvasLEDTicker';
 import { LED_CONFIG } from '@/config/led.config';
 import { useDataHydration } from '@/hooks/useDataHydration';
 
@@ -12,7 +12,7 @@ export default function Home() {
   const hydratedRows = useDataHydration(LED_CONFIG.rows);
 
   return (
-    <MultiLineLEDTicker
+    <CanvasLEDTicker
       rows={hydratedRows}
       dotSize={LED_CONFIG.display.dotSize}
       dotColor={LED_CONFIG.display.dotColor}
