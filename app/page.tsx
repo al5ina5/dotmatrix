@@ -1,22 +1,29 @@
 'use client';
 
-import DotMatrixTicker from '@/components/DotMatrixTicker';
-import { useState } from 'react';
+import StaticLEDTicker from '@/components/StaticLEDTicker';
+import { LED_CONFIG } from '@/config/led.config';
 
+/**
+ * LED Ticker Home Page
+ * 
+ * All configuration is managed in /config/led.config.ts
+ * Edit that file to change:
+ * - Text content
+ * - LED color and size
+ * - Animation speed
+ * - Spacing between letters/words
+ */
 export default function Home() {
-  const [tickerText, setTickerText] = useState('This is a TEST.');
-
   return (
-    <div className="min-h-screen bg-black flex flex-col items-center justify-center">
-      {/* Full Width Ticker */}
-      <DotMatrixTicker
-        text={tickerText}
-        dotSize={10}
-        dotColor="#00ff00"
-        dotGap={3}
-        scrollSpeed={10}
-        glowing={false}
+    <>
+      <StaticLEDTicker
+        text={'@@@@@'}
+        dotSize={LED_CONFIG.dotSize}
+        dotColor={LED_CONFIG.dotColor}
+        dotGap={LED_CONFIG.dotGap}
+        stepInterval={LED_CONFIG.stepInterval}
+        spacing={LED_CONFIG.spacing}
       />
-    </div>
+    </>
   );
 }

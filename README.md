@@ -1,36 +1,76 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# LED Dot Matrix Ticker
 
-## Getting Started
+A realistic LED ticker display with static bulbs that only change their on/off state to create the scrolling effect.
 
-First, run the development server:
+## 🎯 Features
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+- **Static LED Grid** - LED bulbs are fixed in position, only their state changes
+- **Authentic Look** - All LEDs are slightly visible when off (like real LED displays)
+- **Click to Pause** - Click anywhere on the display to pause/resume
+- **Fully Customizable** - Easy configuration for colors, sizing, speed, and spacing
+
+## ⚙️ Configuration
+
+All settings are managed in **`/config/led.config.ts`**
+
+### Available Settings:
+
+```typescript
+{
+  text: 'Your message here',    // The text to display
+  dotSize: 10,                   // LED bulb size in pixels
+  dotColor: '#00ff00',           // LED color (hex)
+  dotGap: 3,                     // Space between LEDs in pixels
+  stepInterval: 150,             // Scroll speed in ms (lower = faster)
+  
+  spacing: {
+    betweenLetters: 1,           // Dots between letters
+    betweenWords: 4,             // Dots for word spaces  
+    beforeRepeat: 12,            // Dots before text repeats
+  }
+}
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 📁 Project Structure
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```
+dotmatrix/
+├── app/
+│   └── page.tsx              # Main page (don't modify - uses config)
+├── components/
+│   ├── StaticLEDTicker.tsx   # Main LED ticker component
+│   └── StaticLEDTicker.module.css
+├── config/
+│   └── led.config.ts         # ⭐ EDIT THIS FILE for all settings
+└── lib/
+    └── patterns.ts            # Character dot patterns (5x7 grid)
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 🎨 Popular Color Schemes
 
-## Learn More
+Try these classic LED colors in `led.config.ts`:
 
-To learn more about Next.js, take a look at the following resources:
+- Green: `'#00ff00'` (classic)
+- Red: `'#ff0000'`
+- Amber: `'#ffbf00'`
+- Blue: `'#0099ff'`
+- White: `'#ffffff'`
+- Purple: `'#9d00ff'`
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## 🚀 Getting Started
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+1. Edit `/config/led.config.ts` to customize your ticker
+2. Run `npm run dev`
+3. Open [http://localhost:3000](http://localhost:3000)
+4. Click anywhere to pause/resume
 
-## Deploy on Vercel
+## 📝 How It Works
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Unlike traditional scrolling tickers that move the text, this implementation:
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+1. Creates a fixed grid of LED bulbs covering the viewport
+2. Calculates which LEDs should be "on" based on the text pattern and scroll offset
+3. Steps the offset at regular intervals
+4. Only updates the on/off state of LEDs (no physical movement)
+
+This creates an authentic LED display effect where the hardware (LEDs) is static and only the lighting pattern changes.
