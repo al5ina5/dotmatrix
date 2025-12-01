@@ -2,9 +2,8 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { LEDRowConfig } from '@/config/led.config';
-import { getPattern } from '@/lib/patterns';
 import { HydratedRow } from '@/hooks/useDataHydration';
-import { LEDContent, ColoredSegment } from '@/plugins/types';
+import { prepareContent, isPixelActive, hexToRgb } from '@/lib/ledRenderer';
 
 interface CanvasLEDTickerProps {
     rows: HydratedRow[];
@@ -13,24 +12,6 @@ interface CanvasLEDTickerProps {
     dotGap: number;
     rowSpacing: number;
     pageInterval: number;
-}
-
-// Helper to parse hex color to RGB for alpha manipulation
-function hexToRgb(hex: string) {
-    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-    return result ? {
-        r: parseInt(result[1], 16),
-        g: parseInt(result[2], 16),
-        b: parseInt(result[3], 16)
-    } : null;
-}
-
-// Helper to normalize LEDContent to ColoredSegment array
-function normalizeContent(content: LEDContent, defaultColor: string): ColoredSegment[] {
-    if (typeof content === 'string') {
-        return [{ text: content, color: defaultColor }];
-    }
-    return content;
 }
 
 export default function CanvasLEDTicker({
@@ -201,122 +182,35 @@ export default function CanvasLEDTicker({
                 // Calculate Row Position
                 const gridRowStart = startGridRow + (i * rowsPerBlock);
 
-                // Prepare Content Logic - Normalize to colored segments
+                // Prepare Content using shared rendering logic
                 const rowColor = rowConfig.color || baseColor;
-                const segments = normalizeContent(rowConfig.content, rowColor);
                 const spacing = rowConfig.spacing;
+                const prepared = prepareContent(rowConfig.content, rowColor, spacing);
 
-                // Build flat character array with color metadata
-                const chars: string[] = [];
-                const charColors: string[] = [];
-
-                for (const segment of segments) {
-                    for (const char of segment.text) {
-                        chars.push(char);
-                        charColors.push(segment.color);
-                    }
-                }
-
-                // Calculate content width for alignment/looping
-                let contentWidth = 0;
-                const charPositions: number[] = [];
-                const patterns: number[][][] = [];
-
-                // Pre-calc positions (this could be memoized but it's fast enough)
-                let currentPos = 0;
-                for (let k = 0; k < chars.length; k++) {
-                    const char = chars[k];
-                    charPositions.push(currentPos);
-                    patterns.push(getPattern(char));
-
-                    if (char === ' ') {
-                        currentPos += spacing.betweenWords;
-                    } else {
-                        currentPos += 5; // Char width
-                        if (k < chars.length - 1 && chars[k + 1] !== ' ') {
-                            currentPos += spacing.betweenLetters;
-                        }
-                    }
-                }
-                contentWidth = currentPos;
-                const totalWidth = contentWidth + spacing.beforeRepeat;
-
-                // Determine Alignment Offset
-                let alignOffset = 0;
-                if (rowConfig.scrolling === false) {
-                    if (rowConfig.alignment === 'center') alignOffset = Math.floor((cols - contentWidth) / 2);
-                    else if (rowConfig.alignment === 'right') alignOffset = cols - contentWidth - 2;
-                }
-
-                // Note: Colors are now set per-character below
-
-                // Draw the 7 rows of this text block
+                // Draw the 7 rows of this text block using shared rendering logic
+                const alignment = rowConfig.alignment || 'left';
+                const scrolling = rowConfig.scrolling !== false;
+                
                 for (let r = 0; r < 7; r++) {
                     const screenRow = gridRowStart + r;
                     if (screenRow < 0 || screenRow >= totalRows) continue;
 
-                    // Optimization: Only iterate columns that could possibly have text?
-                    // For simplicity, we iterate screen cols.
                     for (let c = 0; c < cols; c++) {
+                        const { active, colorIndex } = isPixelActive(
+                            c,
+                            r,
+                            prepared,
+                            state.offset,
+                            scrolling,
+                            alignment,
+                            cols,
+                            spacing
+                        );
 
-                        let charColIndex: number;
-
-                        if (rowConfig.scrolling !== false) {
-                            // Infinite scroll
-                            charColIndex = (c + state.offset) % totalWidth;
-                        } else {
-                            // Static
-                            charColIndex = c - alignOffset;
-                        }
-
-                        // Quick bounds check for static
-                        if (charColIndex < 0) continue;
-                        if (rowConfig.scrolling === false && charColIndex >= contentWidth) continue;
-
-                        // Find which char this column belongs to
-                        // This search is the bottleneck.
-                        // Optimization: We can map column -> char index directly if we pre-calc.
-                        // But let's try the simple loop first.
-
-                        let isActive = false;
-
-                        // Reverse loop might be faster if we assume we are looking near the end? No.
-                        // Binary search? Maybe.
-                        // Simple optimization: check bounds.
-
-                        let activeCharIndex = -1;
-                        for (let k = 0; k < chars.length; k++) {
-                            const start = charPositions[k];
-                            // If we passed the possible char, break
-                            if (start > charColIndex) break;
-
-                            const char = chars[k];
-                            const width = char === ' ' ? spacing.betweenWords : 5;
-
-                            if (charColIndex >= start && charColIndex < start + width) {
-                                if (char !== ' ') {
-                                    const colInChar = charColIndex - start;
-                                    const pattern = patterns[k];
-                                    if (pattern && pattern[r] && pattern[r][colInChar] === 1) {
-                                        isActive = true;
-                                        activeCharIndex = k;
-                                    }
-                                }
-                                break; // Found the char, stop looking
-                            }
-                        }
-
-                        if (isActive && activeCharIndex >= 0) {
+                        if (active && colorIndex >= 0) {
                             // Set color for this character and draw bright pixel
-                            ctx.fillStyle = charColors[activeCharIndex];
+                            ctx.fillStyle = prepared.charColors[colorIndex];
                             ctx.fillRect(c * pitch, screenRow * pitch, dotSize, dotSize);
-
-                            // Optional: Add a "glow" effect?
-                            // ctx.shadowBlur = 4;
-                            // ctx.shadowColor = rowColor;
-                            // ctx.fillRect...
-                            // ctx.shadowBlur = 0; // Reset
-                            // Glow is expensive on Pi, keep it off for now.
                         }
                     }
                 }

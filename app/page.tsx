@@ -3,23 +3,40 @@
 import { useState, useEffect, useRef } from 'react';
 import CanvasLEDTicker from '@/components/CanvasLEDTicker';
 import { Settings } from '@/components/Settings';
-import { useConfig } from '@/context/ConfigContext';
+import { ConfigProvider, useConfig } from '@/context/ConfigContext';
 import { useDataHydration } from '@/hooks/useDataHydration';
+import { useRemoteHost } from '@/hooks/useRemoteHost';
+import { ConnectionCodeOverlay } from '@/components/ConnectionCodeOverlay';
+import { RemoteConnectionState } from '@/lib/remoteControl';
 
 /**
- * LED Ticker Home Page
- * 
- * Interaction:
- * - Double-click anywhere: Toggle settings
- * - Long-press (800ms): Open settings
+ * Inner component that consumes ConfigContext
  */
-export default function Home() {
+function TickerDisplay({
+  remoteId,
+  setRemoteId,
+  clientConnectionState
+}: {
+  remoteId: string | null,
+  setRemoteId: (id: string | null) => void,
+  clientConnectionState: RemoteConnectionState
+}) {
   const config = useConfig();
+
+  // Initialize Remote Control Host here to persist connection even when settings are closed
+  const { peerId, connectionState, isConnected } = useRemoteHost(!remoteId); // Only be a host if NOT a client
 
   // Hydrate the rows (fetch data for dynamic plugins)
   const hydratedRows = useDataHydration(config.rows);
   const [showSettings, setShowSettings] = useState(false);
   const holdTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Auto-close settings when a phone connects (as host)
+  useEffect(() => {
+    if (isConnected) {
+      setShowSettings(false);
+    }
+  }, [isConnected]);
 
   // Long-press to open settings
   const handlePointerDown = () => {
@@ -50,7 +67,19 @@ export default function Home() {
 
   return (
     <>
-      {showSettings && <Settings onClose={() => setShowSettings(false)} />}
+      <ConnectionCodeOverlay code={peerId} />
+      {showSettings && (
+        <Settings
+          onClose={() => setShowSettings(false)}
+          peerId={peerId}
+          connectionState={connectionState}
+          isConnected={isConnected}
+          onConnect={(id) => setRemoteId(id)}
+          onDisconnect={() => setRemoteId(null)}
+          currentRemoteId={remoteId}
+          clientConnectionState={clientConnectionState}
+        />
+      )}
       <div
         onPointerDown={handlePointerDown}
         onPointerUp={handlePointerUp}
@@ -71,3 +100,27 @@ export default function Home() {
     </>
   );
 }
+
+/**
+ * LED Ticker Home Page Wrapper
+ * Single ConfigProvider with adaptive mode
+ */
+export default function Home() {
+  const [connectToId, setConnectToId] = useState<string | null>(null);
+  const [clientConnectionState, setClientConnectionState] = useState<RemoteConnectionState>(RemoteConnectionState.DISCONNECTED);
+
+  return (
+    <ConfigProvider
+      mode={connectToId ? 'remote' : 'local'}
+      remotePeerId={connectToId}
+      onRemoteConnectionStateChange={setClientConnectionState}
+    >
+      <TickerDisplay 
+        remoteId={connectToId} 
+        setRemoteId={setConnectToId}
+        clientConnectionState={clientConnectionState}
+      />
+    </ConfigProvider>
+  );
+}
+

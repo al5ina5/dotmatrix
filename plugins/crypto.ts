@@ -92,7 +92,7 @@ export const CryptoPlugin: LEDPlugin<CryptoParams> = {
                     }
 
                     // Determine color based on change
-                    const priceColor = change === undefined ? '#ffffff' : (change >= 0 ? '#00ff00' : '#ff0000');
+                    const priceColor = change === undefined ? '#ffffff' : (change >= 0 ? '#228B22' : '#E33E33');
 
                     // Add segments: label (gray), price (green/red), arrow (green/red)
                     segments.push({ text: `${symbol}: `, color: '#888888' });

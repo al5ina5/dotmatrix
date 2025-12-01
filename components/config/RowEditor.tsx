@@ -14,7 +14,6 @@ import { PluginConfigForm } from './PluginConfigForm';
 interface RowEditorProps {
     row: LEDRowConfig;
     index: number;
-    key: number;
     onUpdate: (index: number, row: LEDRowConfig) => void;
     onDelete: (index: number) => void;
     onDragStart: (index: number) => void;
@@ -22,7 +21,7 @@ interface RowEditorProps {
     onDragEnd: () => void;
 }
 
-export function RowEditor({ row, index, key, onUpdate, onDelete, onDragStart, onDragOver, onDragEnd }: RowEditorProps) {
+export function RowEditor({ row, index, onUpdate, onDelete, onDragStart, onDragOver, onDragEnd }: RowEditorProps) {
     const [isOpen, setIsOpen] = useState(false);
     const [isDragging, setIsDragging] = useState(false);
 
@@ -44,8 +43,8 @@ export function RowEditor({ row, index, key, onUpdate, onDelete, onDragStart, on
         row.params,
     );
 
-    // Get display title for the row
-    const rowTitle = pluginContent;
+    // Pass raw LEDContent to preview - now supports multi-color!
+    const previewContent = pluginContent || 'Loading...';
 
     const handlePluginChange = (pluginId: string) => {
         // Initialize with default params from schema
@@ -88,7 +87,6 @@ export function RowEditor({ row, index, key, onUpdate, onDelete, onDragStart, on
 
     return (
         <div
-            key={key}
             className={`transition-all ${isOpen && 'bg-white/20 my-6'} ${isDragging ? 'opacity-50' : ''}`}
             draggable
             onDragStart={(e) => {
@@ -123,7 +121,7 @@ export function RowEditor({ row, index, key, onUpdate, onDelete, onDragStart, on
                     </div> */}
                     <div className="flex-1 min-w-0 overflow-hidden">
                         <LEDPreview
-                            content={rowTitle}
+                            content={previewContent}
                             color={row.color || '#00ff00'}
                             scrolling={row.scrolling ?? true}
                             alignment={row.alignment || 'left'}

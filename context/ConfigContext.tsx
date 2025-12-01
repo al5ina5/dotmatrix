@@ -1,8 +1,10 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useMemo, useCallback } from 'react';
 import { LED_CONFIG, LEDRowConfig } from '@/config/led.config';
 import { PLUGIN_REGISTRY } from '@/plugins/registry';
+import { useRemoteClient } from '@/hooks/useRemoteClient';
+import { RemoteConnectionState } from '@/lib/remoteControl';
 
 interface ConfigContextType {
     // Rows
@@ -27,7 +29,7 @@ interface ConfigContextType {
     addAllPlugins: () => void;
 }
 
-const ConfigContext = createContext<ConfigContextType | undefined>(undefined);
+export const ConfigContext = createContext<ConfigContextType | undefined>(undefined);
 
 const STORAGE_KEY = 'led-config';
 
@@ -83,8 +85,20 @@ function saveToStorage(rows: LEDRowConfig[], displaySettings: any) {
     }
 }
 
-export function ConfigProvider({ children }: { children: ReactNode }) {
-    // Initialize from localStorage or defaults
+interface ConfigProviderProps {
+    children: ReactNode;
+    mode?: 'local' | 'remote';
+    remotePeerId?: string | null;
+    onRemoteConnectionStateChange?: (state: RemoteConnectionState) => void;
+}
+
+export function ConfigProvider({ 
+    children, 
+    mode = 'local', 
+    remotePeerId = null,
+    onRemoteConnectionStateChange
+}: ConfigProviderProps) {
+    // LOCAL STATE: Initialize from localStorage or defaults
     const [rows, setRows] = useState<LEDRowConfig[]>(() => {
         const stored = loadFromStorage();
         return stored?.rows || [...LED_CONFIG.rows];
@@ -101,55 +115,111 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
         };
     });
 
-    // Save to localStorage whenever rows or displaySettings change
+    // REMOTE STATE: Connect to remote host when in remote mode
+    const {
+        connectionState,
+        isConnected,
+        remoteConfig,
+        sendUpdateRow,
+        sendAddRow,
+        sendDeleteRow,
+        sendUpdateDisplay,
+    } = useRemoteClient(mode === 'remote' ? remotePeerId : null);
+
+    // Notify parent of connection state changes
     useEffect(() => {
-        saveToStorage(rows, displaySettings);
-    }, [rows, displaySettings]);
+        if (mode === 'remote' && onRemoteConnectionStateChange) {
+            onRemoteConnectionStateChange(connectionState);
+        }
+    }, [connectionState, mode, onRemoteConnectionStateChange]);
 
-    const addRow = () => {
-        const newRow: LEDRowConfig = {
-            pluginId: 'text',
-            params: { content: 'Configure me!' },
-            stepInterval: 100,
-            color: '#ffffff',
-            spacing: { betweenLetters: 1, betweenWords: 4, beforeRepeat: 12 }
-        };
-        setRows([...rows, newRow]);
-    };
+    // Save to localStorage whenever LOCAL rows or displaySettings change (not in remote mode)
+    useEffect(() => {
+        if (mode === 'local') {
+            saveToStorage(rows, displaySettings);
+        }
+    }, [rows, displaySettings, mode]);
 
-    const updateRow = (index: number, updatedRow: LEDRowConfig) => {
-        const newRows = [...rows];
-        newRows[index] = updatedRow;
-        setRows(newRows);
-    };
+    // ACTION HANDLERS: Switch between local and remote based on mode
+    const addRow = useCallback(() => {
+        if (mode === 'remote') {
+            sendAddRow();
+        } else {
+            const newRow: LEDRowConfig = {
+                pluginId: 'text',
+                params: { content: 'Configure me!' },
+                stepInterval: 100,
+                color: '#ffffff',
+                spacing: { betweenLetters: 1, betweenWords: 4, beforeRepeat: 12 }
+            };
+            setRows(prev => [...prev, newRow]);
+        }
+    }, [mode, sendAddRow]);
 
-    const deleteRow = (index: number) => {
-        setRows(rows.filter((_, i) => i !== index));
-    };
+    const updateRow = useCallback((index: number, updatedRow: LEDRowConfig) => {
+        if (mode === 'remote') {
+            sendUpdateRow(index, updatedRow);
+        } else {
+            setRows(prev => {
+                const newRows = [...prev];
+                newRows[index] = updatedRow;
+                return newRows;
+            });
+        }
+    }, [mode, sendUpdateRow]);
 
-    const moveRow = (fromIndex: number, toIndex: number) => {
-        const newRows = [...rows];
-        const [movedRow] = newRows.splice(fromIndex, 1);
-        newRows.splice(toIndex, 0, movedRow);
-        setRows(newRows);
-    };
+    const deleteRow = useCallback((index: number) => {
+        if (mode === 'remote') {
+            sendDeleteRow(index);
+        } else {
+            setRows(prev => prev.filter((_, i) => i !== index));
+        }
+    }, [mode, sendDeleteRow]);
 
-    const updateDisplaySetting = (field: string, value: number | string) => {
-        setDisplaySettings((prev: any) => ({ ...prev, [field]: value }));
-    };
+    const moveRow = useCallback((fromIndex: number, toIndex: number) => {
+        if (mode === 'remote') {
+            console.warn('Move row not implemented for remote mode yet');
+        } else {
+            setRows(prev => {
+                const newRows = [...prev];
+                const [movedRow] = newRows.splice(fromIndex, 1);
+                newRows.splice(toIndex, 0, movedRow);
+                return newRows;
+            });
+        }
+    }, [mode]);
 
-    const resetToDefaults = () => {
-        setRows([...LED_CONFIG.rows]);
-        setDisplaySettings({
-            dotSize: LED_CONFIG.display.dotSize,
-            dotGap: LED_CONFIG.display.dotGap,
-            dotColor: LED_CONFIG.display.dotColor,
-            rowSpacing: LED_CONFIG.layout.rowSpacing,
-            pageInterval: LED_CONFIG.layout.pageInterval,
-        });
-    };
+    const updateDisplaySetting = useCallback((field: string, value: number | string) => {
+        if (mode === 'remote') {
+            sendUpdateDisplay(field, value);
+        } else {
+            setDisplaySettings((prev: any) => ({ ...prev, [field]: value }));
+        }
+    }, [mode, sendUpdateDisplay]);
 
-    const addAllPlugins = () => {
+    const resetToDefaults = useCallback(() => {
+        if (mode === 'remote') {
+            console.warn('Cannot reset remote defaults');
+        } else {
+            setRows([...LED_CONFIG.rows]);
+            setDisplaySettings({
+                dotSize: LED_CONFIG.display.dotSize,
+                dotGap: LED_CONFIG.display.dotGap,
+                dotColor: LED_CONFIG.display.dotColor,
+                rowSpacing: LED_CONFIG.layout.rowSpacing,
+                pageInterval: LED_CONFIG.layout.pageInterval,
+            });
+        }
+    }, [mode]);
+
+    const addAllPlugins = useCallback(() => {
+        if (mode === 'remote') {
+            // TODO: Implement bulk row operations for remote mode
+            // For now, this operation is not supported remotely
+            alert('Test All Plugins is not available in remote control mode. Use this feature on the host device.');
+            return;
+        }
+
         const colors = ['#00ff00', '#ff0000', '#0099ff', '#ffff00', '#ff00ff', '#00ffff', '#ffbf00', '#ffffff'];
 
         const allPluginRows: LEDRowConfig[] = Object.values(PLUGIN_REGISTRY).map((plugin, index) => {
@@ -171,10 +241,8 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
             } else if (plugin.id === 'weather') {
                 baseRow.params = { zipCode: '10001', unit: 'F' };
             } else if (plugin.id === 'crypto') {
-                // Fix: crypto expects array of strings, not objects
                 baseRow.params = { coins: ['bitcoin', 'ethereum', 'solana'], currency: 'usd' };
             } else if (plugin.id === 'stocks') {
-                // Skip stocks in test mode - requires API key
                 return null;
             } else if (plugin.id === 'sports') {
                 baseRow.params = { league: 'nba', limit: 3 };
@@ -189,39 +257,63 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
             } else if (plugin.id === 'reddit') {
                 baseRow.params = { subreddit: 'programming', sortBy: 'hot', limit: 5 };
             } else if (plugin.id === 'customapi') {
-                // Skip custom API in test mode - it needs real URL
                 return null;
             } else if (plugin.id === 'movies') {
-                // Skip movies in test mode - requires API key
                 return null;
             } else if (plugin.id === 'wordofday') {
-                baseRow.params = { showDefinition: false }; // Faster without definition
+                baseRow.params = { showDefinition: false };
             }
 
             return baseRow;
-        }).filter((row): row is LEDRowConfig => row !== null); // Filter out null values
+        }).filter((row): row is LEDRowConfig => row !== null);
 
         setRows(allPluginRows);
-    };
+    }, [mode]);
+
+    // CONTEXT VALUE: Use remote data when in remote mode, local data otherwise
+    const contextValue = useMemo(() => {
+        const currentRows = mode === 'remote' ? (remoteConfig?.rows || []) : rows;
+        const currentDisplaySettings = mode === 'remote' 
+            ? (remoteConfig?.displaySettings || {
+                dotSize: 2,
+                dotGap: 1,
+                dotColor: '#00ff00',
+                rowSpacing: 1,
+                pageInterval: 2000
+            })
+            : displaySettings;
+
+        return {
+            rows: currentRows,
+            addRow,
+            updateRow,
+            deleteRow,
+            moveRow,
+            dotSize: currentDisplaySettings.dotSize,
+            dotGap: currentDisplaySettings.dotGap,
+            dotColor: currentDisplaySettings.dotColor,
+            rowSpacing: currentDisplaySettings.rowSpacing,
+            pageInterval: currentDisplaySettings.pageInterval,
+            updateDisplaySetting,
+            resetToDefaults,
+            addAllPlugins,
+        };
+    }, [
+        mode, 
+        rows, 
+        displaySettings, 
+        remoteConfig, 
+        addRow, 
+        updateRow, 
+        deleteRow, 
+        moveRow, 
+        updateDisplaySetting, 
+        resetToDefaults, 
+        addAllPlugins
+    ]);
 
     return (
-        <ConfigContext.Provider
-            value={{
-                rows,
-                addRow,
-                updateRow,
-                deleteRow,
-                moveRow,
-                dotSize: displaySettings.dotSize,
-                dotGap: displaySettings.dotGap,
-                dotColor: displaySettings.dotColor,
-                rowSpacing: displaySettings.rowSpacing,
-                pageInterval: displaySettings.pageInterval,
-                updateDisplaySetting,
-                resetToDefaults,
-                addAllPlugins,
-            }}
-        >
+        <ConfigContext.Provider value={contextValue}>
             {children}
         </ConfigContext.Provider>
     );

@@ -33,7 +33,7 @@ const TickerRow = ({
 
     return (
         <LEDRow
-            content={content}
+            content={content as any}
             dotSize={dotSize}
             dotColor={row.color || dotColor}
             dotGap={dotGap}

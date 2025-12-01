@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { SWRConfig } from "swr";
 import "./globals.css";
-import { ConfigProvider } from "@/context/ConfigContext";
 import { PWAInstall } from "@/components/PWAInstall";
 
 const geistSans = Geist({
@@ -63,10 +62,8 @@ export default function RootLayout({
             // Only revalidate based on refreshInterval (set per plugin)
           }}
         >
-          <ConfigProvider>
-            <PWAInstall />
-            {children}
-          </ConfigProvider>
+          <PWAInstall />
+          {children}
         </SWRConfig>
       </body>
     </html>

@@ -1,10 +1,11 @@
 'use client';
 
 import React, { useRef, useEffect, useMemo } from 'react';
-import { getPattern } from '@/lib/patterns';
+import { LEDContent } from '@/plugins/types';
+import { prepareContent, isPixelActive, hexToRgb } from '@/lib/ledRenderer';
 
 interface LEDPreviewProps {
-    content: string;
+    content: LEDContent; // Now supports multi-color!
     color?: string;
     scrolling?: boolean;
     alignment?: 'left' | 'center' | 'right';
@@ -28,43 +29,18 @@ export function LEDPreview({
 
     const dotSize = 3;
     const dotGap = 1;
-    const letterSpacing = 1;
-    const wordSpacing = 4;
-    const beforeRepeat = 12;
     const height = 7;
+    
+    const spacing = useMemo(() => ({
+        betweenLetters: 1,
+        betweenWords: 4,
+        beforeRepeat: 12
+    }), []);
 
-    // Pre-calculate character positions and patterns
-    const { patterns, positions, totalWidth } = useMemo(() => {
-        const patterns = content.split('').map(char => getPattern(char));
-        const positions: number[] = [];
-        let currentPos = 0;
-
-        content.split('').forEach((char, i) => {
-            positions.push(currentPos);
-
-            if (char === ' ') {
-                currentPos += wordSpacing;
-            } else {
-                currentPos += 5;
-
-                if (i < content.length - 1 && content[i + 1] !== ' ') {
-                    currentPos += letterSpacing;
-                }
-            }
-        });
-
-        return { patterns, positions, totalWidth: currentPos + beforeRepeat };
-    }, [content]);
-
-    // Parse color to RGB
-    const colorRGB = useMemo(() => {
-        const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(color);
-        return result ? {
-            r: parseInt(result[1], 16),
-            g: parseInt(result[2], 16),
-            b: parseInt(result[3], 16)
-        } : { r: 0, g: 255, b: 0 };
-    }, [color]);
+    // Pre-calculate character positions and patterns using shared logic
+    const prepared = useMemo(() => {
+        return prepareContent(content, color, spacing);
+    }, [content, color, spacing]);
 
     useEffect(() => {
         const canvas = canvasRef.current;
@@ -87,67 +63,13 @@ export function LEDPreview({
         let lastTime = 0;
         const scrollSpeed = 150; // ms per step
 
-        // Calculate content width (without repeat spacing)
-        const contentWidth = positions.length > 0
-            ? positions[positions.length - 1] + (content[content.length - 1] === ' ' ? wordSpacing : 5)
-            : 0;
-
-        // Calculate alignment offset for static mode
-        const getAlignmentOffset = (): number => {
-            if (scrolling) return 0;
-
-            if (alignment === 'center') {
-                return Math.floor((visibleCols - contentWidth) / 2);
-            } else if (alignment === 'right') {
-                return visibleCols - contentWidth - 2;
-            }
-            return 0; // left
-        };
-
-        // Check if a grid cell should be active
-        const isActive = (col: number, row: number): boolean => {
-            let charColumnIndex: number;
-
-            if (scrolling) {
-                // Scrolling mode: wrap around
-                charColumnIndex = (col + scrollOffsetRef.current) % totalWidth;
-            } else {
-                // Static mode: apply alignment offset
-                const alignOffset = getAlignmentOffset();
-                charColumnIndex = col - alignOffset;
-
-                // Out of bounds check for static mode
-                if (charColumnIndex < 0 || charColumnIndex >= contentWidth) {
-                    return false;
-                }
-            }
-
-            for (let i = 0; i < content.length; i++) {
-                const charStart = positions[i];
-                const char = content[i];
-                const charWidth = char === ' ' ? wordSpacing : 5;
-
-                if (charColumnIndex >= charStart && charColumnIndex < charStart + charWidth) {
-                    const columnInChar = charColumnIndex - charStart;
-                    if (char === ' ') return false;
-
-                    const pattern = patterns[i];
-                    if (!pattern || row >= pattern.length) return false;
-
-                    const patternRow = pattern[row];
-                    if (!patternRow || columnInChar >= patternRow.length) return false;
-
-                    return patternRow[columnInChar] === 1;
-                }
-            }
-            return false;
-        };
+        // No need for custom logic anymore - using shared renderer
 
         // Render function
         const render = (timestamp: number) => {
             // Update scroll offset only if scrolling is enabled
             if (scrolling && timestamp - lastTime > scrollSpeed) {
-                scrollOffsetRef.current = (scrollOffsetRef.current + 1) % totalWidth;
+                scrollOffsetRef.current = (scrollOffsetRef.current + 1) % prepared.totalWidth;
                 lastTime = timestamp;
             }
 
@@ -155,29 +77,48 @@ export function LEDPreview({
             ctx.fillStyle = '#000000';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // Draw LEDs
+            // Draw LEDs with multi-color support
             for (let row = 0; row < height; row++) {
                 for (let col = 0; col < visibleCols; col++) {
                     const x = col * cellSize;
                     const y = row * cellSize;
 
-                    const active = isActive(col, row);
-                    const alpha = active ? 1 : 0.08;
+                    const { active, colorIndex } = isPixelActive(
+                        col,
+                        row,
+                        prepared,
+                        scrollOffsetRef.current,
+                        scrolling,
+                        alignment,
+                        visibleCols,
+                        spacing
+                    );
 
-                    // Draw LED dot
-                    ctx.fillStyle = `rgba(${colorRGB.r}, ${colorRGB.g}, ${colorRGB.b}, ${alpha})`;
-                    ctx.beginPath();
-                    ctx.arc(x + dotSize / 2, y + dotSize / 2, dotSize / 2, 0, Math.PI * 2);
-                    ctx.fill();
+                    if (active && colorIndex >= 0) {
+                        // Get color for this specific character
+                        const pixelColor = prepared.charColors[colorIndex];
+                        const rgb = hexToRgb(pixelColor) || { r: 0, g: 255, b: 0 };
 
-                    // Add glow for active LEDs
-                    if (active) {
-                        ctx.shadowColor = color;
+                        // Draw active LED with character's color
+                        ctx.fillStyle = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 1)`;
+                        ctx.beginPath();
+                        ctx.arc(x + dotSize / 2, y + dotSize / 2, dotSize / 2, 0, Math.PI * 2);
+                        ctx.fill();
+
+                        // Add glow for active LEDs
+                        ctx.shadowColor = pixelColor;
                         ctx.shadowBlur = 4;
                         ctx.beginPath();
                         ctx.arc(x + dotSize / 2, y + dotSize / 2, dotSize / 2, 0, Math.PI * 2);
                         ctx.fill();
                         ctx.shadowBlur = 0;
+                    } else {
+                        // Draw dimmed LED
+                        const rgb = hexToRgb(color) || { r: 0, g: 255, b: 0 };
+                        ctx.fillStyle = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.08)`;
+                        ctx.beginPath();
+                        ctx.arc(x + dotSize / 2, y + dotSize / 2, dotSize / 2, 0, Math.PI * 2);
+                        ctx.fill();
                     }
                 }
             }
@@ -205,7 +146,7 @@ export function LEDPreview({
             }
             window.removeEventListener('resize', handleResize);
         };
-    }, [content, color, patterns, positions, totalWidth, colorRGB, dotSize, dotGap, height, scrolling, alignment]);
+    }, [content, color, prepared, dotSize, dotGap, height, scrolling, alignment, spacing]);
 
     // Reset scroll offset when switching modes
     useEffect(() => {

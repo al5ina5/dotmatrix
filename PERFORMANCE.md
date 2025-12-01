@@ -252,3 +252,4 @@ The LED canvas is the biggest performance factor:
 **TL;DR: Milliseconds work great! Start with 100ms, go lower if needed.**
 
 
+
