@@ -13,6 +13,39 @@ export interface MultiLineLEDTickerProps {
     rowSpacing: number;
 }
 
+import { usePluginData } from '@/hooks/usePluginData';
+
+// Internal component to handle data fetching for each row
+const TickerRow = ({
+    row,
+    dotSize,
+    dotColor,
+    dotGap,
+    isPaused
+}: {
+    row: LEDRowConfig;
+    dotSize: number;
+    dotColor: string;
+    dotGap: number;
+    isPaused: boolean;
+}) => {
+    const { content } = usePluginData(row.pluginId, row.params);
+
+    return (
+        <LEDRow
+            content={content}
+            dotSize={dotSize}
+            dotColor={row.color || dotColor}
+            dotGap={dotGap}
+            stepInterval={row.stepInterval}
+            spacing={row.spacing}
+            scrolling={row.scrolling}
+            alignment={row.alignment}
+            isPaused={isPaused}
+        />
+    );
+};
+
 /**
  * MultiLineLEDTicker Component
  * 
@@ -126,15 +159,11 @@ export default function MultiLineLEDTicker({
                             className={styles.rowWrapper}
                             style={{ marginBottom: isLastRow ? 0 : `${rowMarginBottom}px` }}
                         >
-                            <LEDRow
-                                content={row.content}
+                            <TickerRow
+                                row={row}
                                 dotSize={dotSize}
-                                dotColor={row.color || dotColor} // Use row color if specified, else global
+                                dotColor={dotColor}
                                 dotGap={dotGap}
-                                stepInterval={row.stepInterval}
-                                spacing={row.spacing}
-                                scrolling={row.scrolling}
-                                alignment={row.alignment}
                                 isPaused={isPaused}
                             />
                         </div>

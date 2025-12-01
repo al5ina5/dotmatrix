@@ -13,7 +13,7 @@ export const TextPlugin: LEDPlugin<TextPluginParams> = {
             key: 'content',
             label: 'Text Content',
             type: 'text',
-            defaultValue: '',
+            defaultValue: 'Add some text here...',
             required: true,
             placeholder: 'Enter your text...'
         }
@@ -22,4 +22,5 @@ export const TextPlugin: LEDPlugin<TextPluginParams> = {
         return params.content || '';
     }
 };
+
 

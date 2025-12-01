@@ -50,6 +50,7 @@ export const CryptoPlugin: LEDPlugin<CryptoParams> = {
             };
 
             const ids = coins.join(',');
+            // Direct CoinGecko API call (free tier, no key required)
             const url = `https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=${currency}`;
 
             const response = await fetch(url);
@@ -65,7 +66,7 @@ export const CryptoPlugin: LEDPlugin<CryptoParams> = {
             const parts = coins.map(coinId => {
                 const price = data[coinId]?.[currency];
                 const symbol = symbolMap[coinId] || coinId.toUpperCase().slice(0, 4);
-                
+
                 if (price === undefined) return `${symbol}: ???`;
 
                 // Format price nicely
@@ -84,7 +85,9 @@ export const CryptoPlugin: LEDPlugin<CryptoParams> = {
             return parts.join('   ');
         } catch (error) {
             console.error('Crypto plugin error:', error);
-            return 'Crypto Data Error';
+            // Return friendlier message with the coins they're trying to track
+            const coinList = coins?.map(c => c.toUpperCase().slice(0, 3)).join(', ') || 'crypto';
+            return `💰 ${coinList}: Fetching prices...`;
         }
     }
 };

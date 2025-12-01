@@ -61,7 +61,10 @@ export const WordOfDayPlugin: LEDPlugin<WordOfDayPluginParams> = {
             
         } catch (error) {
             console.error('Error fetching word of the day:', error);
-            return 'Word of the Day unavailable';
+            // Return a fun fallback word
+            const fallbackWords = ['SERENDIPITY', 'EPHEMERAL', 'LUMINOUS', 'RESILIENT', 'WANDERLUST'];
+            const randomWord = fallbackWords[Math.floor(Math.random() * fallbackWords.length)];
+            return `📚 Word: ${randomWord}`;
         }
     }
 };

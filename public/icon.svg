@@ -1,0 +1,64 @@
+<svg width="512" height="512" xmlns="http://www.w3.org/2000/svg">
+  <!-- Black background -->
+  <rect width="512" height="512" fill="#000000"/>
+  
+  <!-- LED Matrix "D" pattern (for DotMatrix) -->
+  <!-- 5x7 grid of LED dots, centered -->
+  <g id="led-pattern" transform="translate(156, 146)">
+    <!-- Row 1: 1 1 1 0 0 -->
+    <circle cx="20" cy="20" r="18" fill="#00ff00" opacity="1"/>
+    <circle cx="60" cy="20" r="18" fill="#00ff00" opacity="1"/>
+    <circle cx="100" cy="20" r="18" fill="#00ff00" opacity="1"/>
+    <circle cx="140" cy="20" r="18" fill="#00ff00" opacity="0.08"/>
+    <circle cx="180" cy="20" r="18" fill="#00ff00" opacity="0.08"/>
+    
+    <!-- Row 2: 1 0 0 1 0 -->
+    <circle cx="20" cy="60" r="18" fill="#00ff00" opacity="1"/>
+    <circle cx="60" cy="60" r="18" fill="#00ff00" opacity="0.08"/>
+    <circle cx="100" cy="60" r="18" fill="#00ff00" opacity="0.08"/>
+    <circle cx="140" cy="60" r="18" fill="#00ff00" opacity="1"/>
+    <circle cx="180" cy="60" r="18" fill="#00ff00" opacity="0.08"/>
+    
+    <!-- Row 3: 1 0 0 1 0 -->
+    <circle cx="20" cy="100" r="18" fill="#00ff00" opacity="1"/>
+    <circle cx="60" cy="100" r="18" fill="#00ff00" opacity="0.08"/>
+    <circle cx="100" cy="100" r="18" fill="#00ff00" opacity="0.08"/>
+    <circle cx="140" cy="100" r="18" fill="#00ff00" opacity="1"/>
+    <circle cx="180" cy="100" r="18" fill="#00ff00" opacity="0.08"/>
+    
+    <!-- Row 4: 1 0 0 1 0 -->
+    <circle cx="20" cy="140" r="18" fill="#00ff00" opacity="1"/>
+    <circle cx="60" cy="140" r="18" fill="#00ff00" opacity="0.08"/>
+    <circle cx="100" cy="140" r="18" fill="#00ff00" opacity="0.08"/>
+    <circle cx="140" cy="140" r="18" fill="#00ff00" opacity="1"/>
+    <circle cx="180" cy="140" r="18" fill="#00ff00" opacity="0.08"/>
+    
+    <!-- Row 5: 1 0 0 1 0 -->
+    <circle cx="20" cy="180" r="18" fill="#00ff00" opacity="1"/>
+    <circle cx="60" cy="180" r="18" fill="#00ff00" opacity="0.08"/>
+    <circle cx="100" cy="180" r="18" fill="#00ff00" opacity="0.08"/>
+    <circle cx="140" cy="180" r="18" fill="#00ff00" opacity="1"/>
+    <circle cx="180" cy="180" r="18" fill="#00ff00" opacity="0.08"/>
+    
+    <!-- Row 6: 1 0 0 1 0 -->
+    <circle cx="20" cy="220" r="18" fill="#00ff00" opacity="1"/>
+    <circle cx="60" cy="220" r="18" fill="#00ff00" opacity="0.08"/>
+    <circle cx="100" cy="220" r="18" fill="#00ff00" opacity="0.08"/>
+    <circle cx="140" cy="220" r="18" fill="#00ff00" opacity="1"/>
+    <circle cx="180" cy="220" r="18" fill="#00ff00" opacity="0.08"/>
+    
+    <!-- Row 7: 1 1 1 0 0 -->
+    <circle cx="20" cy="260" r="18" fill="#00ff00" opacity="1"/>
+    <circle cx="60" cy="260" r="18" fill="#00ff00" opacity="1"/>
+    <circle cx="100" cy="260" r="18" fill="#00ff00" opacity="1"/>
+    <circle cx="140" cy="260" r="18" fill="#00ff00" opacity="0.08"/>
+    <circle cx="180" cy="260" r="18" fill="#00ff00" opacity="0.08"/>
+    
+    <!-- Add subtle glow to active LEDs -->
+    <circle cx="20" cy="20" r="18" fill="#00ff00" opacity="0.3" filter="blur(8)"/>
+    <circle cx="60" cy="20" r="18" fill="#00ff00" opacity="0.3" filter="blur(8)"/>
+    <circle cx="100" cy="20" r="18" fill="#00ff00" opacity="0.3" filter="blur(8)"/>
+  </g>
+</svg>
+
+

@@ -77,7 +77,7 @@ export const RedditPlugin: LEDPlugin<RedditPluginParams> = {
             
         } catch (error) {
             console.error('Error fetching Reddit data:', error);
-            return `r/${params.subreddit || 'reddit'} unavailable`;
+            return `📱 r/${params.subreddit || 'reddit'}: Loading...`;
         }
     }
 };

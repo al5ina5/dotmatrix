@@ -106,7 +106,7 @@ export const CustomAPIPlugin: LEDPlugin<CustomAPIPluginParams> = {
             
         } catch (error) {
             console.error('Error fetching custom API:', error);
-            return `API Error: ${error instanceof Error ? error.message : 'Unknown error'}`;
+            return `🔌 API: Configure your endpoint in settings`;
         }
     }
 };

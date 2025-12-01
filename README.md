@@ -96,10 +96,47 @@ dotColor: '#ffffff'  // White
 
 ## 🚀 Getting Started
 
-1. Edit `/config/led.config.ts`
-2. Run `npm run dev`
+1. Install dependencies: `npm install` or `yarn install`
+2. Run dev server: `npm run dev`
 3. Open [http://localhost:3000](http://localhost:3000)
-4. Click anywhere to pause/resume
+4. **Double-click** or **long-press** anywhere to toggle settings
+5. Configure your display and add content rows!
+
+### 🔑 Optional: Get Free API Keys
+
+Some plugins need free API keys (takes 2 minutes total):
+
+- **Stocks** → Get free key at [finnhub.io](https://finnhub.io) (30 seconds)
+- **Movies** → Get free key at [themoviedb.org](https://themoviedb.org) (2 minutes)
+
+See **[API_KEYS.md](./API_KEYS.md)** for detailed setup instructions.
+
+**Most plugins work without any keys:** Clock, Weather, Crypto, Sports, Reddit, ISS, Jokes, Facts, Holidays, and more!
+
+## 🔌 Available Plugins
+
+### No API Key Required ✅
+- **⏰ Clock** - Current time with optional milliseconds (configurable 1ms-60s updates)
+- **🌤️ Weather** - Real-time weather by ZIP code
+- **💰 Crypto** - Live crypto prices (CoinGecko)
+- **🏀 Sports** - Live scores (NFL, NBA, MLB, NHL, Soccer)
+- **📱 Reddit** - Top posts from any subreddit
+- **🛸 ISS Tracker** - International Space Station location
+- **🎉 Holidays** - Upcoming holidays
+- **🌅 Sunrise/Sunset** - Sun times for any location
+- **😂 Jokes** - Random jokes
+- **🧠 Facts** - Random facts
+- **🐱 Cat Facts** - Cat facts!
+- **📚 Word of the Day** - Daily vocabulary
+- **⏱️ Countdown** - Countdown to any event
+- **🌍 World Clock** - Multiple time zones
+- **💻 System Info** - Browser/device info
+- **📝 Static Text** - Custom text
+- **🔧 Custom API** - Connect any JSON API
+
+### Requires Free API Key 🔑
+- **📊 Stocks** - Real-time stock prices ([finnhub.io](https://finnhub.io))
+- **🎬 Movies** - Upcoming movies ([themoviedb.org](https://themoviedb.org))
 
 ## 📐 Screen Behavior
 

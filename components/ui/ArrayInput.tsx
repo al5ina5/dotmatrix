@@ -8,13 +8,38 @@ interface ArrayInputProps {
 }
 
 export function ArrayInput({ label, value, onChange, placeholder }: ArrayInputProps) {
-    const arrayValue = Array.isArray(value) ? value : [];
+    // Normalize the value - handle objects that might have been stored incorrectly
+    const normalizeValue = (val: any): string[] => {
+        if (!Array.isArray(val)) return [];
+
+        return val.map(item => {
+            // If it's an object, try to extract a string value from it
+            if (typeof item === 'object' && item !== null) {
+                // Try common properties
+                if ('id' in item) return String(item.id);
+                if ('symbol' in item) return String(item.symbol);
+                if ('value' in item) return String(item.value);
+                if ('name' in item) return String(item.name);
+                // Fallback to empty string for unparseable objects
+                return '';
+            }
+            return String(item);
+        }).filter(item => item.length > 0);
+    };
+
+    const arrayValue = normalizeValue(value);
     const [inputValue, setInputValue] = useState(arrayValue.join(', '));
 
     // Update input when external value changes
     useEffect(() => {
-        setInputValue(arrayValue.join(', '));
-    }, [JSON.stringify(arrayValue)]);
+        const normalized = normalizeValue(value);
+        setInputValue(normalized.join(', '));
+
+        // Auto-fix: if we normalized objects to strings, save the corrected version
+        if (JSON.stringify(normalized) !== JSON.stringify(value)) {
+            onChange(normalized);
+        }
+    }, [JSON.stringify(value)]);
 
     // Debounce the onChange
     useEffect(() => {
@@ -23,7 +48,7 @@ export function ArrayInput({ label, value, onChange, placeholder }: ArrayInputPr
                 .split(',')
                 .map(item => item.trim())
                 .filter(item => item.length > 0);
-            
+
             // Only update if changed
             if (JSON.stringify(items) !== JSON.stringify(arrayValue)) {
                 onChange(items);

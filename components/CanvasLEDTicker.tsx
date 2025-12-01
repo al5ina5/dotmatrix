@@ -312,7 +312,7 @@ export default function CanvasLEDTicker({
     }, [dotSize, dotColor, dotGap, rowSpacing, pageInterval]); // Re-init if layout config changes
 
     return (
-        <div ref={containerRef} style={{ width: '100vw', height: '100vh', background: 'black', overflow: 'hidden' }}>
+        <div ref={containerRef} style={{ width: '100vw', height: '100dvh', background: 'black', overflow: 'hidden' }}>
             <canvas ref={canvasRef} style={{ display: 'block' }} />
         </div>
     );

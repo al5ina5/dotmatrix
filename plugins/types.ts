@@ -1,9 +1,9 @@
-export type ConfigFieldType = 
-    | 'text' 
-    | 'number' 
-    | 'select' 
-    | 'boolean' 
-    | 'color' 
+export type ConfigFieldType =
+    | 'text'
+    | 'number'
+    | 'select'
+    | 'boolean'
+    | 'color'
     | 'multi-select'
     | 'array'
     | 'object';
@@ -26,13 +26,27 @@ export interface LEDPlugin<TParams = any> {
     name: string;
     description?: string;
     /**
-     * Fetch data for the plugin
+     * Fetch/compute data for the plugin
+     * 
+     * For LOCAL plugins (clock, countdown, system):
+     * - Should be synchronous/quick computation
+     * - No network calls
+     * - Called frequently (e.g. every second for clock)
+     * 
+     * For API plugins (weather, crypto, stocks):
+     * - Can be async with network calls
+     * - Should handle errors gracefully
+     * - Called less frequently (e.g. every 60 seconds)
+     * 
      * @param params Configuration parameters for this instance
      * @returns The text string to display on the LED matrix
      */
     fetch: (params: TParams) => Promise<string> | string;
     /**
-     * Default refresh interval in milliseconds
+     * Default update interval in milliseconds
+     * 
+     * For local plugins: How often to recompute/update the display (e.g. 1000 for clock)
+     * For API plugins: How often to fetch new data from API (e.g. 60000 for weather)
      */
     defaultInterval?: number;
     /**

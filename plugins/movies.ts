@@ -1,6 +1,7 @@
 import { LEDPlugin } from './types';
 
 interface MoviesParams {
+    apiKey: string;
     limit?: number;
     separator?: string;
 }
@@ -10,12 +11,35 @@ export const MoviesPlugin: LEDPlugin<MoviesParams> = {
     name: 'Upcoming Movies',
     description: 'Displays upcoming movies from TMDB',
     defaultInterval: 300000, // Update every 5 minutes
+    configSchema: [
+        {
+            key: 'apiKey',
+            label: 'TMDB API Key',
+            type: 'text',
+            defaultValue: '',
+            required: true,
+            placeholder: 'Get free API key from themoviedb.org',
+        },
+        {
+            key: 'limit',
+            label: 'Number of Movies',
+            type: 'number',
+            defaultValue: 5,
+            min: 1,
+            max: 20,
+        },
+        {
+            key: 'separator',
+            label: 'Separator',
+            type: 'text',
+            defaultValue: ' *** ',
+            placeholder: 'Text between movie titles',
+        }
+    ],
 
-    fetch: async ({ limit = 5, separator = ' *** ' }) => {
-        const apiKey = process.env.NEXT_PUBLIC_TMDB_API_KEY;
-
+    fetch: async ({ apiKey, limit = 5, separator = ' *** ' }) => {
         if (!apiKey) {
-            return 'Error: Missing API Key';
+            return '🎬 Movies: Add TMDB API key in settings (free at themoviedb.org)';
         }
 
         try {
@@ -24,16 +48,19 @@ export const MoviesPlugin: LEDPlugin<MoviesParams> = {
             );
 
             if (!response.ok) {
+                if (response.status === 401) {
+                    return '🎬 Movies: Invalid API key';
+                }
                 throw new Error('Failed to fetch movies');
             }
 
             const data = await response.json();
             const titles = data.results.slice(0, limit).map((m: any) => m.title);
 
-            return `${titles.join(separator)}`;
+            return `🎬 ${titles.join(separator)}`;
         } catch (error) {
             console.error('Movies plugin error:', error);
-            return 'Error Loading Data';
+            return '🎬 Movies: Unable to load data';
         }
     }
 };

@@ -22,8 +22,7 @@ export const LED_CONFIG = {
         // --- PAGE 1: Essentials ---
         {
             pluginId: 'clock',
-            params: { format: '12h', showSeconds: true },
-            refreshInterval: 1000,
+            params: { format: '12h', showSeconds: true, updateInterval: 1000 },
             stepInterval: 300,
             scrolling: false,
             alignment: 'center',
@@ -121,7 +120,7 @@ export const LED_CONFIG = {
 export type LEDRowConfig = {
     pluginId: string;
     params?: any;
-    refreshInterval?: number;
+    // Note: refreshInterval removed - now managed automatically by each plugin
     stepInterval: number;
     color?: string;
     scrolling?: boolean; // Default: true

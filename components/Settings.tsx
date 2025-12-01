@@ -18,6 +18,13 @@ export function Settings({ onClose }: SettingsProps) {
         }
     };
 
+    const handleClearCache = () => {
+        if (confirm('Clear all cached data and refresh? This will reload the page.')) {
+            localStorage.clear();
+            window.location.reload();
+        }
+    };
+
     return (
         <Portal>
             <div className="fixed inset-0 bg-black/95 text-white font-mono z-50 overflow-auto">
@@ -31,23 +38,36 @@ export function Settings({ onClose }: SettingsProps) {
                         <line x1="6" y1="6" x2="18" y2="18"></line>
                     </svg>
                 </button>
-                
+
                 <div className="max-w-2xl mx-auto space-y-12 p-6 py-12">
                     <div className="flex items-center justify-between">
                         <div>
                             <h1 className="text-2xl font-bold">Settings</h1>
                             <p className="opacity-70">Manage your LED display settings here.</p>
                         </div>
-                        <button
-                            onClick={handleReset}
-                            className="text-xs text-white/50 hover:text-white/80 underline transition-colors"
-                        >
-                            Reset to Defaults
-                        </button>
+                        <div className="flex gap-4 items-center">
+                            <button
+                                onClick={handleClearCache}
+                                className="text-xs text-yellow-500/70 hover:text-yellow-500 underline transition-colors"
+                                title="Clear all cached data and reload (fixes corrupted data)"
+                            >
+                                🔄 Clear Cache
+                            </button>
+                            <button
+                                onClick={handleReset}
+                                className="text-xs text-white/50 hover:text-white/80 underline transition-colors"
+                            >
+                                Reset to Defaults
+                            </button>
+                        </div>
                     </div>
 
                     <RowsManager />
                     <DisplaySettings />
+
+                    <div className="mt-12 pt-6 border-t border-white/10 text-center text-sm text-white/50">
+                        <p>💡 <strong>Tip:</strong> Double-click display to toggle settings • Long-press for 800ms to open settings</p>
+                    </div>
                 </div>
             </div>
         </Portal>

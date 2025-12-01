@@ -85,7 +85,7 @@ export const SportsPlugin: LEDPlugin<SportsPluginParams> = {
 
         } catch (error) {
             console.error('Error fetching sports data:', error);
-            return 'Sports data unavailable';
+            return `🏀 ${params.league?.toUpperCase() || 'Sports'}: Loading scores...`;
         }
     }
 };

@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react';
 import { LEDRowConfig } from '@/config/led.config';
 import { PLUGIN_REGISTRY } from '@/plugins/registry';
 import { usePluginData } from '@/hooks/usePluginData';
+import { LEDPreview } from '../LEDPreview';
 import { Input } from '../ui/Input';
 import { Select } from '../ui/Select';
 import { Checkbox } from '../ui/Checkbox';
@@ -13,6 +14,7 @@ import { PluginConfigForm } from './PluginConfigForm';
 interface RowEditorProps {
     row: LEDRowConfig;
     index: number;
+    key: number;
     onUpdate: (index: number, row: LEDRowConfig) => void;
     onDelete: (index: number) => void;
     onDragStart: (index: number) => void;
@@ -20,7 +22,7 @@ interface RowEditorProps {
     onDragEnd: () => void;
 }
 
-export function RowEditor({ row, index, onUpdate, onDelete, onDragStart, onDragOver, onDragEnd }: RowEditorProps) {
+export function RowEditor({ row, index, key, onUpdate, onDelete, onDragStart, onDragOver, onDragEnd }: RowEditorProps) {
     const [isOpen, setIsOpen] = useState(false);
     const [isDragging, setIsDragging] = useState(false);
 
@@ -40,7 +42,6 @@ export function RowEditor({ row, index, onUpdate, onDelete, onDragStart, onDragO
     const { content: pluginContent } = usePluginData(
         row.pluginId,
         row.params,
-        0 // Don't auto-refresh in preview (main display handles that)
     );
 
     // Get display title for the row
@@ -63,6 +64,8 @@ export function RowEditor({ row, index, onUpdate, onDelete, onDragStart, onDragO
             stepInterval: row.stepInterval,
             color: row.color,
             spacing: row.spacing,
+            scrolling: row.scrolling,
+            alignment: row.alignment,
         };
         onUpdate(index, updatedRow);
     };
@@ -85,7 +88,8 @@ export function RowEditor({ row, index, onUpdate, onDelete, onDragStart, onDragO
 
     return (
         <div
-            className={`transition-all ${isOpen && 'bg-white/10 my-6'} ${isDragging ? 'opacity-50' : ''}`}
+            key={key}
+            className={`transition-all ${isOpen && 'bg-white/20 my-6'} ${isDragging ? 'opacity-50' : ''}`}
             draggable
             onDragStart={(e) => {
                 setIsDragging(true);
@@ -104,32 +108,39 @@ export function RowEditor({ row, index, onUpdate, onDelete, onDragStart, onDragO
         >
             <div
                 onClick={() => setIsOpen(!isOpen)}
-                className="flex justify-between items-center border-b-2 border-white/20 p-2 px-4 cursor-pointer hover:bg-white/5 transition-colors"
+                className="flex flex-col cursor-pointer hover:bg-white/5 transition-colors"
             >
-                <div className="mr-3 cursor-grab active:cursor-grabbing" title="Drag to reorder">
-                    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" className="text-white/30">
-                        <circle cx="4" cy="4" r="1.5" />
-                        <circle cx="12" cy="4" r="1.5" />
-                        <circle cx="4" cy="8" r="1.5" />
-                        <circle cx="12" cy="8" r="1.5" />
-                        <circle cx="4" cy="12" r="1.5" />
-                        <circle cx="12" cy="12" r="1.5" />
-                    </svg>
+                <div className="flex justify-between items-center p-2 overflow-hidden">
+                    {/* <div className="shrink-0 cursor-grab active:cursor-grabbing" title="Drag to reorder">
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" className="text-white/30">
+                            <circle cx="4" cy="4" r="1.5" />
+                            <circle cx="12" cy="4" r="1.5" />
+                            <circle cx="4" cy="8" r="1.5" />
+                            <circle cx="12" cy="8" r="1.5" />
+                            <circle cx="4" cy="12" r="1.5" />
+                            <circle cx="12" cy="12" r="1.5" />
+                        </svg>
+                    </div> */}
+                    <div className="flex-1 min-w-0 overflow-hidden">
+                        <LEDPreview
+                            content={rowTitle}
+                            color={row.color || '#00ff00'}
+                            scrolling={row.scrolling ?? true}
+                            alignment={row.alignment || 'left'}
+                        />
+                    </div>
+                    {isOpen && (
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onDelete(index);
+                            }}
+                            className="absolute shrink-0 text-red-400 hover:text-red-300 text-xs px-2 py-1 border border-red-400/50 rounded"
+                        >
+                            Delete
+                        </button>
+                    )}
                 </div>
-                <p className="text-sm font-bold truncate flex-1 mr-4">
-                    {rowTitle}
-                </p>
-                {isOpen && (
-                    <button
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            onDelete(index);
-                        }}
-                        className="text-red-400 hover:text-red-300 text-xs px-2 py-1 border border-red-400/50 rounded"
-                    >
-                        Delete
-                    </button>
-                )}
             </div>
 
             {isOpen && (
@@ -169,7 +180,6 @@ export function RowEditor({ row, index, onUpdate, onDelete, onDragStart, onDragO
                             ]}
                         />
                     )}
-
 
                     <Select
                         label="Plugin"
