@@ -21,6 +21,13 @@ export interface ConfigField {
     step?: number; // For number type
 }
 
+export interface ColoredSegment {
+    text: string;
+    color: string; // Hex color string
+}
+
+export type LEDContent = string | ColoredSegment[];
+
 export interface LEDPlugin<TParams = any> {
     id: string;
     name: string;
@@ -39,9 +46,9 @@ export interface LEDPlugin<TParams = any> {
      * - Called less frequently (e.g. every 60 seconds)
      * 
      * @param params Configuration parameters for this instance
-     * @returns The text string to display on the LED matrix
+     * @returns The text string or colored segments to display on the LED matrix
      */
-    fetch: (params: TParams) => Promise<string> | string;
+    fetch: (params: TParams) => Promise<LEDContent> | LEDContent;
     /**
      * Default update interval in milliseconds
      * 

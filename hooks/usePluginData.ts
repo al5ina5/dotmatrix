@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import useSWR from 'swr';
 import { PLUGIN_REGISTRY } from '@/plugins/registry';
+import { LEDContent } from '@/plugins/types';
 
 /**
  * Generate a consistent SWR cache key for a plugin + params combination
@@ -46,8 +47,8 @@ const LOCAL_PLUGINS = new Set(['clock', 'countdown', 'system', 'text']);
  */
 function useLocalPlugin(pluginId: string, params?: any) {
     const plugin = pluginId ? PLUGIN_REGISTRY[pluginId] : undefined;
-    const [content, setContent] = useState<string>('');
-    
+    const [content, setContent] = useState<LEDContent>('');
+
     // Stable params string for dependency array
     const paramsKey = JSON.stringify(params || {});
 
@@ -76,7 +77,7 @@ function useLocalPlugin(pluginId: string, params?: any) {
         const timer = setInterval(fetchData, interval);
 
         return () => clearInterval(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [pluginId, paramsKey]);
 
     return {

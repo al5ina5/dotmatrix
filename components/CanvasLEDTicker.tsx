@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { LEDRowConfig } from '@/config/led.config';
 import { getPattern } from '@/lib/patterns';
 import { HydratedRow } from '@/hooks/useDataHydration';
+import { LEDContent, ColoredSegment } from '@/plugins/types';
 
 interface CanvasLEDTickerProps {
     rows: HydratedRow[];
@@ -22,6 +23,14 @@ function hexToRgb(hex: string) {
         g: parseInt(result[2], 16),
         b: parseInt(result[3], 16)
     } : null;
+}
+
+// Helper to normalize LEDContent to ColoredSegment array
+function normalizeContent(content: LEDContent, defaultColor: string): ColoredSegment[] {
+    if (typeof content === 'string') {
+        return [{ text: content, color: defaultColor }];
+    }
+    return content;
 }
 
 export default function CanvasLEDTicker({
@@ -192,9 +201,21 @@ export default function CanvasLEDTicker({
                 // Calculate Row Position
                 const gridRowStart = startGridRow + (i * rowsPerBlock);
 
-                // Prepare Content Logic
-                const content = rowConfig.content;
+                // Prepare Content Logic - Normalize to colored segments
+                const rowColor = rowConfig.color || baseColor;
+                const segments = normalizeContent(rowConfig.content, rowColor);
                 const spacing = rowConfig.spacing;
+
+                // Build flat character array with color metadata
+                const chars: string[] = [];
+                const charColors: string[] = [];
+
+                for (const segment of segments) {
+                    for (const char of segment.text) {
+                        chars.push(char);
+                        charColors.push(segment.color);
+                    }
+                }
 
                 // Calculate content width for alignment/looping
                 let contentWidth = 0;
@@ -203,8 +224,8 @@ export default function CanvasLEDTicker({
 
                 // Pre-calc positions (this could be memoized but it's fast enough)
                 let currentPos = 0;
-                for (let k = 0; k < content.length; k++) {
-                    const char = content[k];
+                for (let k = 0; k < chars.length; k++) {
+                    const char = chars[k];
                     charPositions.push(currentPos);
                     patterns.push(getPattern(char));
 
@@ -212,7 +233,7 @@ export default function CanvasLEDTicker({
                         currentPos += spacing.betweenWords;
                     } else {
                         currentPos += 5; // Char width
-                        if (k < content.length - 1 && content[k + 1] !== ' ') {
+                        if (k < chars.length - 1 && chars[k + 1] !== ' ') {
                             currentPos += spacing.betweenLetters;
                         }
                     }
@@ -227,9 +248,7 @@ export default function CanvasLEDTicker({
                     else if (rowConfig.alignment === 'right') alignOffset = cols - contentWidth - 2;
                 }
 
-                // Set Color
-                const rowColor = rowConfig.color || baseColor;
-                ctx.fillStyle = rowColor;
+                // Note: Colors are now set per-character below
 
                 // Draw the 7 rows of this text block
                 for (let r = 0; r < 7; r++) {
@@ -265,12 +284,13 @@ export default function CanvasLEDTicker({
                         // Binary search? Maybe.
                         // Simple optimization: check bounds.
 
-                        for (let k = 0; k < content.length; k++) {
+                        let activeCharIndex = -1;
+                        for (let k = 0; k < chars.length; k++) {
                             const start = charPositions[k];
                             // If we passed the possible char, break
                             if (start > charColIndex) break;
 
-                            const char = content[k];
+                            const char = chars[k];
                             const width = char === ' ' ? spacing.betweenWords : 5;
 
                             if (charColIndex >= start && charColIndex < start + width) {
@@ -279,14 +299,16 @@ export default function CanvasLEDTicker({
                                     const pattern = patterns[k];
                                     if (pattern && pattern[r] && pattern[r][colInChar] === 1) {
                                         isActive = true;
+                                        activeCharIndex = k;
                                     }
                                 }
                                 break; // Found the char, stop looking
                             }
                         }
 
-                        if (isActive) {
-                            // Draw bright pixel (overdrawing the dim one)
+                        if (isActive && activeCharIndex >= 0) {
+                            // Set color for this character and draw bright pixel
+                            ctx.fillStyle = charColors[activeCharIndex];
                             ctx.fillRect(c * pitch, screenRow * pitch, dotSize, dotSize);
 
                             // Optional: Add a "glow" effect?

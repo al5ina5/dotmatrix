@@ -51,7 +51,7 @@ export const CryptoPlugin: LEDPlugin<CryptoParams> = {
 
             const ids = coins.join(',');
             // Direct CoinGecko API call (free tier, no key required)
-            const url = `https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=${currency}`;
+            const url = `https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=${currency}&include_24hr_change=true`;
 
             const response = await fetch(url);
 
@@ -62,27 +62,50 @@ export const CryptoPlugin: LEDPlugin<CryptoParams> = {
 
             const data = await response.json();
 
-            // Format: "BTC: $95,000  ETH: $3,200  S: $0.85"
-            const parts = coins.map(coinId => {
-                const price = data[coinId]?.[currency];
+            // Format with colored segments: label (gray), price (green/red)
+            const segments = [];
+
+            for (let i = 0; i < coins.length; i++) {
+                const coinId = coins[i];
+                const coinData = data[coinId];
+                const price = coinData?.[currency];
+                const change = coinData?.[`${currency}_24h_change`];
                 const symbol = symbolMap[coinId] || coinId.toUpperCase().slice(0, 4);
 
-                if (price === undefined) return `${symbol}: ???`;
-
-                // Format price nicely
-                let priceStr = price.toString();
-                if (price >= 1000) {
-                    priceStr = price.toLocaleString('en-US', { maximumFractionDigits: 0 });
-                } else if (price < 1) {
-                    priceStr = price.toFixed(4);
+                if (price === undefined) {
+                    segments.push({ text: `${symbol}: ???`, color: '#888888' });
                 } else {
-                    priceStr = price.toFixed(2);
+                    // Format price nicely
+                    let priceStr = price.toString();
+                    if (price >= 1000) {
+                        priceStr = price.toLocaleString('en-US', { maximumFractionDigits: 0 });
+                    } else if (price < 1) {
+                        priceStr = price.toFixed(4);
+                    } else {
+                        priceStr = price.toFixed(2);
+                    }
+
+                    // Determine arrow
+                    let arrow = '';
+                    if (change !== undefined) {
+                        arrow = change >= 0 ? '↑' : '↓';
+                    }
+
+                    // Determine color based on change
+                    const priceColor = change === undefined ? '#ffffff' : (change >= 0 ? '#00ff00' : '#ff0000');
+
+                    // Add segments: label (gray), price (green/red), arrow (green/red)
+                    segments.push({ text: `${symbol}: `, color: '#888888' });
+                    segments.push({ text: `$${priceStr} ${arrow}`, color: priceColor });
                 }
 
-                return `${symbol}: $${priceStr}`;
-            });
+                // Add spacing between coins (except for the last one)
+                if (i < coins.length - 1) {
+                    segments.push({ text: '   ', color: '#888888' });
+                }
+            }
 
-            return parts.join('   ');
+            return segments;
         } catch (error) {
             console.error('Crypto plugin error:', error);
             // Return friendlier message with the coins they're trying to track

@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "screen": "adb shell am start   -n com.internet.tvbrowser/.BrowserActivity   -a android.intent.action.VIEW   -d 'http://10.0.0.240:3000'"
   },
   "dependencies": {
     "next": "16.0.5",

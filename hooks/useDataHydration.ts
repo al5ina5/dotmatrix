@@ -2,11 +2,12 @@
 
 import { usePluginData } from './usePluginData';
 import { LEDRowConfig } from '@/config/led.config';
+import { LEDContent } from '@/plugins/types';
 
 // This type represents the "Hydrated" row that the UI component actually renders
 // It's strictly text-based at this point
 export type HydratedRow = Omit<LEDRowConfig, 'pluginId' | 'params'> & {
-    content: string;
+    content: LEDContent;
 };
 
 /**
