@@ -1,4 +1,5 @@
 import { LEDRowConfig } from '@/config/led.config';
+import { ScreenConfig } from './screen';
 
 /**
  * Display settings for the LED matrix
@@ -33,6 +34,7 @@ export interface StoredConfig {
  */
 export interface RemoteConfig {
     rows?: LEDRowConfig[];
+    screens?: ScreenConfig[];
     displaySettings?: DisplaySettings;
 }
 

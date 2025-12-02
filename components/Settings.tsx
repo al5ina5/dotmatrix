@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Portal } from "./Portal";
-import { RowsManager } from "./config/RowsManager";
+import { ScreensManager } from "./config/ScreensManager";
 import { DisplaySettings } from "./config/DisplaySettings";
 import { RemoteConnectionUI } from "./RemoteConnectionUI";
 import { RemoteConnectionPrompt } from "./RemoteConnectionPrompt";
@@ -156,13 +156,13 @@ export function Settings({
                                     Disconnect
                                 </button>
                             </div>
-                            <RowsManager />
+                            <ScreensManager />
                             <DisplaySettings />
                         </>
                     ) : (
                         // HOST MODE
                         <>
-                            <RowsManager />
+                            <ScreensManager />
                             <DisplaySettings />
                         </>
                     )}

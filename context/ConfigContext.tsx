@@ -7,14 +7,24 @@ import { useRemoteClient } from '@/hooks/useRemoteClient';
 import { RemoteConnectionState } from '@/lib/remoteControl';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { DisplaySettings, StoredConfig } from '@/types/config';
+import { ScreenBasedConfig, ScreenConfig, MultiLineScreenConfig, isMultiLineScreen } from '@/types/screen';
+import { isLegacyConfig, migrateToScreenConfig } from '@/lib/screenMigration';
 
 interface ConfigContextType {
-    // Rows
+    // Rows (backward compatibility - operates on default multi-line screen)
     rows: LEDRowConfig[];
     addRow: () => void;
     updateRow: (index: number, row: LEDRowConfig) => void;
     deleteRow: (index: number) => void;
     moveRow: (fromIndex: number, toIndex: number) => void;
+
+    // Screens (new API)
+    screens: ScreenConfig[];
+    addScreen: (screen: ScreenConfig) => void;
+    updateScreen: (index: number, screen: ScreenConfig) => void;
+    deleteScreen: (index: number) => void;
+    moveScreen: (fromIndex: number, toIndex: number) => void;
+    getDefaultMultiLineScreen: () => MultiLineScreenConfig | null;
 
     // Display Settings
     dotSize: number;
@@ -39,13 +49,23 @@ const STORAGE_KEY = 'led-config';
 /**
  * Validation function for stored config data
  * Cleans up and migrates data from older versions
+ * Supports both legacy (StoredConfig) and new (ScreenBasedConfig) formats
  */
-function validateStoredConfig(data: any): StoredConfig | null {
+function validateStoredConfig(data: any): ScreenBasedConfig | StoredConfig | null {
     if (!data || typeof data !== 'object') {
         return null;
     }
 
-    // Validate and clean up rows data
+    // If it's already a screen-based config, validate and return it
+    if (data.screens && Array.isArray(data.screens)) {
+        // Validate screen-based config
+        if (data.displaySettings && typeof data.displaySettings.brightness !== 'number') {
+            data.displaySettings.brightness = 100;
+        }
+        return data as ScreenBasedConfig;
+    }
+
+    // Legacy config format - validate and clean up rows
     if (data.rows && Array.isArray(data.rows)) {
         data.rows = data.rows.map((row: any) => {
             // Clean up crypto plugin params if they have object arrays
@@ -69,6 +89,11 @@ function validateStoredConfig(data: any): StoredConfig | null {
         data.displaySettings.brightness = 100;
     }
 
+    // Auto-migrate legacy configs to screen-based format
+    if (isLegacyConfig(data)) {
+        return migrateToScreenConfig(data as StoredConfig);
+    }
+
     return data as StoredConfig;
 }
 
@@ -79,15 +104,24 @@ interface ConfigProviderProps {
     onRemoteConnectionStateChange?: (state: RemoteConnectionState) => void;
 }
 
-export function ConfigProvider({ 
-    children, 
-    mode = 'local', 
+export function ConfigProvider({
+    children,
+    mode = 'local',
     remotePeerId = null,
     onRemoteConnectionStateChange
 }: ConfigProviderProps) {
-    // Default configuration values
-    const defaultConfig: StoredConfig = {
-        rows: [...LED_CONFIG.rows],
+    // Default configuration values (screen-based)
+    const defaultConfig: ScreenBasedConfig = {
+        screens: [
+            {
+                id: 'default',
+                type: 'multiline',
+                name: 'Main Display',
+                rows: [...LED_CONFIG.rows],
+                duration: 0,
+                zIndex: 0
+            } as MultiLineScreenConfig
+        ],
         displaySettings: {
             dotSize: LED_CONFIG.display.dotSize,
             dotGap: LED_CONFIG.display.dotGap,
@@ -95,32 +129,74 @@ export function ConfigProvider({
             rowSpacing: LED_CONFIG.layout.rowSpacing,
             pageInterval: LED_CONFIG.layout.pageInterval,
             brightness: LED_CONFIG.display.brightness ?? 100,
-        }
+        },
+        screenInterval: 0
     };
 
     // LOCAL STATE: Managed with useLocalStorage hook
-    const [localConfig, setLocalConfig] = useLocalStorage<StoredConfig>(
+    // Store as ScreenBasedConfig, but validate can return either format
+    const [localConfig, setLocalConfig] = useLocalStorage<ScreenBasedConfig | StoredConfig>(
         STORAGE_KEY,
         defaultConfig,
         validateStoredConfig
     );
 
-    // Separate rows and displaySettings for backward compatibility
-    const rows = localConfig.rows;
-    const displaySettings = localConfig.displaySettings;
+    // Normalize to ScreenBasedConfig format
+    const screenConfig: ScreenBasedConfig = useMemo(() => {
+        if (isLegacyConfig(localConfig)) {
+            return migrateToScreenConfig(localConfig);
+        }
+        return localConfig as ScreenBasedConfig;
+    }, [localConfig]);
+
+    // Get default multi-line screen for row API compatibility
+    const defaultScreen = useMemo(() => {
+        return screenConfig.screens.find(
+            (s): s is MultiLineScreenConfig => s.type === 'multiline' && s.id === 'default'
+        ) || screenConfig.screens.find(
+            (s): s is MultiLineScreenConfig => s.type === 'multiline'
+        ) || null;
+    }, [screenConfig]);
+
+    // Backward compatibility: expose rows from default screen
+    const rows = defaultScreen?.rows || [];
+    const displaySettings = screenConfig.displaySettings;
 
     const setRows = useCallback((updater: LEDRowConfig[] | ((prev: LEDRowConfig[]) => LEDRowConfig[])) => {
-        setLocalConfig(prev => ({
-            ...prev,
-            rows: typeof updater === 'function' ? updater(prev.rows) : updater
-        }));
-    }, [setLocalConfig]);
+        setLocalConfig(prev => {
+            const config = isLegacyConfig(prev) ? migrateToScreenConfig(prev) : (prev as ScreenBasedConfig);
+            const newRows = typeof updater === 'function' ? updater(rows) : updater;
+
+            // Update default multi-line screen
+            const updatedScreens = config.screens.map(screen => {
+                if (isMultiLineScreen(screen) && (screen.id === 'default' || !defaultScreen || screen.id === defaultScreen.id)) {
+                    return { ...screen, rows: newRows };
+                }
+                return screen;
+            });
+
+            // If no multi-line screen exists, create one
+            if (!updatedScreens.some(s => isMultiLineScreen(s))) {
+                updatedScreens.push({
+                    id: 'default',
+                    type: 'multiline',
+                    name: 'Main Display',
+                    rows: newRows,
+                    duration: 0,
+                    zIndex: 0
+                } as MultiLineScreenConfig);
+            }
+
+            return { ...config, screens: updatedScreens };
+        });
+    }, [setLocalConfig, rows, defaultScreen]);
 
     const setDisplaySettings = useCallback((updater: DisplaySettings | ((prev: DisplaySettings) => DisplaySettings)) => {
-        setLocalConfig(prev => ({
-            ...prev,
-            displaySettings: typeof updater === 'function' ? updater(prev.displaySettings) : updater
-        }));
+        setLocalConfig(prev => {
+            const config = isLegacyConfig(prev) ? migrateToScreenConfig(prev) : (prev as ScreenBasedConfig);
+            const newSettings = typeof updater === 'function' ? updater(config.displaySettings) : updater;
+            return { ...config, displaySettings: newSettings };
+        });
     }, [setLocalConfig]);
 
     // REMOTE STATE: Connect to remote host when in remote mode
@@ -207,6 +283,66 @@ export function ConfigProvider({
         }
     }, [mode, setLocalConfig, defaultConfig]);
 
+    // SCREEN MANAGEMENT METHODS
+    const addScreen = useCallback((screen: ScreenConfig) => {
+        if (mode === 'remote') {
+            // TODO: Implement remote screen operations
+            console.warn('Screen operations not yet supported in remote mode');
+            return;
+        }
+        setLocalConfig(prev => {
+            const config = isLegacyConfig(prev) ? migrateToScreenConfig(prev) : (prev as ScreenBasedConfig);
+            return { ...config, screens: [...config.screens, screen] };
+        });
+    }, [mode, setLocalConfig]);
+
+    const updateScreen = useCallback((index: number, updatedScreen: ScreenConfig) => {
+        if (mode === 'remote') {
+            // TODO: Implement remote screen operations
+            console.warn('Screen operations not yet supported in remote mode');
+            return;
+        }
+        setLocalConfig(prev => {
+            const config = isLegacyConfig(prev) ? migrateToScreenConfig(prev) : (prev as ScreenBasedConfig);
+            const newScreens = [...config.screens];
+            newScreens[index] = updatedScreen;
+            return { ...config, screens: newScreens };
+        });
+    }, [mode, setLocalConfig]);
+
+    const deleteScreen = useCallback((index: number) => {
+        if (mode === 'remote') {
+            // TODO: Implement remote screen operations
+            console.warn('Screen operations not yet supported in remote mode');
+            return;
+        }
+        setLocalConfig(prev => {
+            const config = isLegacyConfig(prev) ? migrateToScreenConfig(prev) : (prev as ScreenBasedConfig);
+            // Don't allow deleting the last screen
+            if (config.screens.length <= 1) return config;
+            return { ...config, screens: config.screens.filter((_, i) => i !== index) };
+        });
+    }, [mode, setLocalConfig]);
+
+    const moveScreen = useCallback((fromIndex: number, toIndex: number) => {
+        if (mode === 'remote') {
+            // TODO: Implement remote screen operations
+            console.warn('Screen operations not yet supported in remote mode');
+            return;
+        }
+        setLocalConfig(prev => {
+            const config = isLegacyConfig(prev) ? migrateToScreenConfig(prev) : (prev as ScreenBasedConfig);
+            const newScreens = [...config.screens];
+            const [movedScreen] = newScreens.splice(fromIndex, 1);
+            newScreens.splice(toIndex, 0, movedScreen);
+            return { ...config, screens: newScreens };
+        });
+    }, [mode, setLocalConfig]);
+
+    const getDefaultMultiLineScreen = useCallback(() => {
+        return defaultScreen;
+    }, [defaultScreen]);
+
     const addAllPlugins = useCallback(() => {
         if (mode === 'remote') {
             // TODO: Implement bulk row operations for remote mode
@@ -267,8 +403,12 @@ export function ConfigProvider({
 
     // CONTEXT VALUE: Use remote data when in remote mode, local data otherwise
     const contextValue = useMemo(() => {
+        // For remote mode, we still need to handle legacy format
         const currentRows = mode === 'remote' ? (remoteConfig?.rows || []) : rows;
-        const currentDisplaySettings = mode === 'remote' 
+        const currentScreens = mode === 'remote'
+            ? (remoteConfig?.screens || [])
+            : screenConfig.screens;
+        const currentDisplaySettings = mode === 'remote'
             ? (remoteConfig?.displaySettings || {
                 dotSize: 2,
                 dotGap: 1,
@@ -280,11 +420,20 @@ export function ConfigProvider({
             : displaySettings;
 
         return {
+            // Row API (backward compatibility)
             rows: currentRows,
             addRow,
             updateRow,
             deleteRow,
             moveRow,
+            // Screen API (new)
+            screens: currentScreens,
+            addScreen,
+            updateScreen,
+            deleteScreen,
+            moveScreen,
+            getDefaultMultiLineScreen,
+            // Display Settings
             dotSize: currentDisplaySettings.dotSize,
             dotGap: currentDisplaySettings.dotGap,
             dotColor: currentDisplaySettings.dotColor,
@@ -296,16 +445,22 @@ export function ConfigProvider({
             addAllPlugins,
         };
     }, [
-        mode, 
-        rows, 
-        displaySettings, 
-        remoteConfig, 
-        addRow, 
-        updateRow, 
-        deleteRow, 
-        moveRow, 
-        updateDisplaySetting, 
-        resetToDefaults, 
+        mode,
+        rows,
+        screenConfig.screens,
+        displaySettings,
+        remoteConfig,
+        addRow,
+        updateRow,
+        deleteRow,
+        moveRow,
+        addScreen,
+        updateScreen,
+        deleteScreen,
+        moveScreen,
+        getDefaultMultiLineScreen,
+        updateDisplaySetting,
+        resetToDefaults,
         addAllPlugins
     ]);
 

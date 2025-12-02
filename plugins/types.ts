@@ -61,4 +61,55 @@ export interface LEDPlugin<TParams = any> {
      * Defines what inputs are needed and their defaults
      */
     configSchema?: ConfigField[];
+    /**
+     * Plugin type classification
+     * - 'row': Regular text plugin (default)
+     * - 'fullscreen': Fullscreen effect plugin
+     * - 'both': Can be used as either
+     */
+    screenType?: 'row' | 'fullscreen' | 'both';
+}
+
+/**
+ * Fullscreen plugin interface for effects that render directly to canvas
+ * These plugins don't return text content - they draw directly
+ */
+export interface FullscreenPlugin<TParams = any> {
+    id: string;
+    name: string;
+    description?: string;
+    screenType: 'fullscreen';
+
+    /**
+     * Default parameters for the plugin
+     */
+    defaultParams?: Partial<TParams>;
+
+    /**
+     * Configuration schema for the plugin
+     */
+    configSchema?: ConfigField[];
+
+    /**
+     * Render function called each animation frame
+     * 
+     * @param ctx Canvas rendering context
+     * @param width Canvas width in pixels
+     * @param height Canvas height in pixels
+     * @param dotSize Size of each LED dot
+     * @param dotGap Gap between dots
+     * @param timestamp Current animation timestamp
+     * @param params Plugin parameters
+     * @param state Persistent state object (initialized on first call)
+     */
+    render: (
+        ctx: CanvasRenderingContext2D,
+        width: number,
+        height: number,
+        dotSize: number,
+        dotGap: number,
+        timestamp: number,
+        params: TParams,
+        state: any
+    ) => void;
 }

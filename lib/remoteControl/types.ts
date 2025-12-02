@@ -1,4 +1,5 @@
 import { LEDRowConfig } from '@/config/led.config';
+import { ScreenConfig } from '@/types/screen';
 
 /**
  * Message types sent between TV (host) and Phone (client)
@@ -16,9 +17,13 @@ export type RemoteMessage =
 
 /**
  * Full config snapshot for initial sync
+ * Supports both legacy (rows) and new (screens) formats for backward compatibility
  */
 export interface RemoteConfig {
-    rows: LEDRowConfig[];
+    /** Legacy format: rows array (for backward compatibility) */
+    rows?: LEDRowConfig[];
+    /** New format: screens array */
+    screens?: ScreenConfig[];
     displaySettings: {
         dotSize: number;
         dotGap: number;
