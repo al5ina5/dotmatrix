@@ -1,16 +1,11 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Azeret_Mono } from "next/font/google";
 import { SWRConfig } from "swr";
 import "./globals.css";
 import { PWAInstall } from "@/components/PWAInstall";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const azeretMono = Azeret_Mono({
+  variable: "--font-azeret-mono",
   subsets: ["latin"],
 });
 
@@ -47,7 +42,7 @@ export default function RootLayout({
         <link rel="apple-touch-icon" href="/icon-192.png" />
       </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${azeretMono.variable} antialiased`}
       >
         <SWRConfig
           value={{

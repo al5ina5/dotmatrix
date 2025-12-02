@@ -31,7 +31,7 @@ export function LEDPreview({
     const dotSize = 3;
     const dotGap = 1;
     const height = 7;
-    
+
     const spacing = useMemo(() => ({
         betweenLetters: 1,
         betweenWords: 4,

@@ -1,5 +1,5 @@
-import { LEDPlugin } from './types';
 import { withPluginErrorHandling } from '@/lib/pluginHelpers';
+import { LEDPlugin } from './types';
 
 interface HolidayParams {
     countryCode: string; // e.g. 'US'
@@ -9,7 +9,7 @@ export const HolidaysPlugin: LEDPlugin<HolidayParams> = {
     id: 'holidays',
     name: 'Public Holidays',
     description: 'Upcoming public holidays',
-    defaultInterval: 86400000, // 24 hours
+    defaultInterval: 86400000,
 
     fetch: async ({ countryCode = 'US' }) => withPluginErrorHandling(
         'holidays',
@@ -26,9 +26,11 @@ export const HolidaysPlugin: LEDPlugin<HolidayParams> = {
             if (upcoming.length === 0) return 'No more holidays this year!';
 
             const next = upcoming[0];
-            const date = new Date(next.date).toLocaleDateString();
+            const nextDate = new Date(next.date);
+            const daysUntil = Math.ceil((nextDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+            const dayText = daysUntil === 1 ? 'day' : 'days';
 
-            return `NEXT HOLIDAY: ${next.name} (${date})`;
+            return `${daysUntil} ${dayText} until ${next.name}`;
         },
         'Holiday Error'
     )

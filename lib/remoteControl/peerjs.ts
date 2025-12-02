@@ -9,6 +9,8 @@ class PeerJSAdapter implements RemoteControlAdapter {
     private connection: DataConnection | null = null;
     private connectionStateCallback: ((state: ConnectionState) => void) | null = null;
     private messageCallback: ((msg: RemoteMessage) => void) | null = null;
+    // Track the latest known state so late subscribers get an immediate, correct value
+    private currentState: ConnectionState = ConnectionState.DISCONNECTED;
 
     /**
      * Initialize as Host (TV)
@@ -17,8 +19,25 @@ class PeerJSAdapter implements RemoteControlAdapter {
         this.messageCallback = onMessage;
 
         return new Promise((resolve, reject) => {
-            // Generate a short, readable peer ID (4 chars)
-            const shortId = Math.random().toString(36).substring(2, 6).toUpperCase();
+            // Try to load existing peerId from localStorage
+            const STORAGE_KEY = 'remote-host-peer-id';
+            let shortId: string;
+            
+            if (typeof window !== 'undefined') {
+                const savedId = localStorage.getItem(STORAGE_KEY);
+                if (savedId && savedId.length === 4) {
+                    // Use saved peerId
+                    shortId = savedId.toUpperCase();
+                    console.log('[RemoteControl] Using saved peerId:', shortId);
+                } else {
+                    // Generate a new short, readable peer ID (4 chars)
+                    shortId = Math.random().toString(36).substring(2, 6).toUpperCase();
+                    console.log('[RemoteControl] Generated new peerId:', shortId);
+                }
+            } else {
+                // Server-side: always generate new
+                shortId = Math.random().toString(36).substring(2, 6).toUpperCase();
+            }
 
             this.peer = new Peer(shortId, {
                 debug: 2, // Enable debug logs in dev mode
@@ -26,14 +45,51 @@ class PeerJSAdapter implements RemoteControlAdapter {
 
             this.peer.on('open', (id) => {
                 console.log('[RemoteControl] Host initialized with ID:', id);
+                // Save peerId to localStorage for persistence
+                if (typeof window !== 'undefined') {
+                    localStorage.setItem(STORAGE_KEY, id);
+                }
                 this.updateConnectionState(ConnectionState.DISCONNECTED);
                 resolve(id);
             });
 
             this.peer.on('error', (err) => {
                 console.error('[RemoteControl] Peer error:', err);
-                this.updateConnectionState(ConnectionState.ERROR);
-                reject(err);
+                // If error is due to ID being taken, try generating a new one
+                if (err.type === 'unavailable-id' || err.type === 'network') {
+                    console.log('[RemoteControl] PeerId unavailable, generating new one...');
+                    // Clear the saved ID and try again with a new one
+                    if (typeof window !== 'undefined') {
+                        localStorage.removeItem(STORAGE_KEY);
+                    }
+                    // Generate new ID and retry
+                    const newId = Math.random().toString(36).substring(2, 6).toUpperCase();
+                    this.peer?.destroy();
+                    this.peer = new Peer(newId, { debug: 2 });
+                    
+                    this.peer.on('open', (id) => {
+                        console.log('[RemoteControl] Host initialized with new ID:', id);
+                        if (typeof window !== 'undefined') {
+                            localStorage.setItem(STORAGE_KEY, id);
+                        }
+                        this.updateConnectionState(ConnectionState.DISCONNECTED);
+                        resolve(id);
+                    });
+
+                    this.peer.on('error', (retryErr) => {
+                        console.error('[RemoteControl] Retry failed:', retryErr);
+                        this.updateConnectionState(ConnectionState.ERROR);
+                        reject(retryErr);
+                    });
+
+                    this.peer.on('connection', (conn) => {
+                        console.log('[RemoteControl] Client connecting...');
+                        this.setupConnection(conn);
+                    });
+                } else {
+                    this.updateConnectionState(ConnectionState.ERROR);
+                    reject(err);
+                }
             });
 
             // Listen for incoming connections
@@ -76,7 +132,16 @@ class PeerJSAdapter implements RemoteControlAdapter {
      * Setup connection event handlers
      */
     private setupConnection(conn: DataConnection) {
-        this.connection = conn;
+        // Check if connection is already open (race condition protection)
+        if (conn.open) {
+            console.log('[RemoteControl] Connection already open');
+            this.connection = conn;
+            this.updateConnectionState(ConnectionState.CONNECTED);
+            // Send connected notification
+            this.send({ type: 'CONNECTED' });
+        } else {
+            this.connection = conn;
+        }
 
         conn.on('open', () => {
             console.log('[RemoteControl] Connection established');
@@ -138,24 +203,23 @@ class PeerJSAdapter implements RemoteControlAdapter {
      */
     onConnectionStateChange(callback: (state: ConnectionState) => void): void {
         this.connectionStateCallback = callback;
+        // Immediately emit the current state so consumers don't miss prior transitions
+        callback(this.currentState);
     }
 
     /**
      * Update connection state and notify callback
      */
     private updateConnectionState(state: ConnectionState): void {
+        this.currentState = state;
         if (this.connectionStateCallback) {
             this.connectionStateCallback(state);
         }
     }
 }
 
-// Singleton instance
-let adapter: PeerJSAdapter | null = null;
-
+// Create a new adapter instance each time (not singleton)
+// This allows separate client/host instances to coexist
 export function getPeerJSAdapter(): RemoteControlAdapter {
-    if (!adapter) {
-        adapter = new PeerJSAdapter();
-    }
-    return adapter;
+    return new PeerJSAdapter();
 }

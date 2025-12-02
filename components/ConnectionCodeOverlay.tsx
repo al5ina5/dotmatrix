@@ -28,9 +28,16 @@ export function ConnectionCodeOverlay({ code }: ConnectionCodeOverlayProps) {
 
     return (
         <Portal>
-            <div className='fixed top-6 w-full flex justify-center text-white z-90'>
-                <p className='text-3xl'>Remote Code: {code}</p>
+            <div className='fixed inset-0 w-full h-full flex items-center justify-center pointer-events-none'>
+
+                {/* <div className='max-w-lg w-full p-24 backdrop-blur-md'>
+                    &nbsp;
+                </div> */}
+
             </div>
+            {/* <div className='fixed top-6 w-full flex justify-center text-white z-90'>
+                <p className='text-3xl'>Remote Code: {code}</p>
+            </div> */}
         </Portal>
     );
 }

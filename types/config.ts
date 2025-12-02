@@ -16,6 +16,12 @@ export interface DisplaySettings {
     pageInterval: number;
     /** Brightness level (0-100) */
     brightness: number;
+    /** Opacity of inactive LEDs (0-50, representing 0-50%) */
+    inactiveLEDOpacity: number;
+    /** Color of inactive LEDs (hex string) */
+    inactiveLEDColor: string;
+    /** Animation speed multiplier (0.25x to 4x, where 1.0 is normal speed) */
+    speedMultiplier: number;
 }
 
 /**

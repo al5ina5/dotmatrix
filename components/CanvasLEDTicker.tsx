@@ -13,6 +13,9 @@ interface CanvasLEDTickerProps {
     rowSpacing: number;
     pageInterval: number;
     brightness: number; // 0-100
+    inactiveLEDOpacity?: number; // 0-50, representing 0-50% opacity
+    inactiveLEDColor?: string; // Hex color string for inactive LEDs
+    speedMultiplier?: number; // Animation speed multiplier (0.25x to 4x, 1.0 = normal)
 }
 
 export default function CanvasLEDTicker({
@@ -22,7 +25,10 @@ export default function CanvasLEDTicker({
     dotGap,
     rowSpacing,
     pageInterval,
-    brightness,
+    brightness = 100,
+    inactiveLEDOpacity = 8,
+    inactiveLEDColor,
+    speedMultiplier = 1.0,
 }: CanvasLEDTickerProps) {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const containerRef = useRef<HTMLDivElement>(null);
@@ -30,6 +36,9 @@ export default function CanvasLEDTicker({
     // Use refs for mutable state to avoid re-triggering the effect loop
     const rowsRef = useRef(rows);
     rowsRef.current = rows;
+    
+    const speedMultiplierRef = useRef(speedMultiplier);
+    speedMultiplierRef.current = speedMultiplier;
 
     // Pagination State
     const [currentPage, setCurrentPage] = useState(0);
@@ -46,6 +55,19 @@ export default function CanvasLEDTicker({
             lastTick: number;
         }
     }>({});
+    
+    const prevSpeedMultiplierRef = useRef(speedMultiplier);
+    
+    // Reset animation timing when speed multiplier changes to apply immediately
+    useEffect(() => {
+        if (prevSpeedMultiplierRef.current !== speedMultiplier) {
+            // Reset lastTick for all rows so the new speed applies immediately
+            Object.keys(stateRef.current).forEach(key => {
+                stateRef.current[parseInt(key)].lastTick = performance.now();
+            });
+            prevSpeedMultiplierRef.current = speedMultiplier;
+        }
+    }, [speedMultiplier]);
 
     useEffect(() => {
         const canvas = canvasRef.current;
@@ -137,10 +159,12 @@ export default function CanvasLEDTicker({
             const startGridRow = Math.floor(unusedRows / 2);
 
             // --- 2. Draw Background Grid ---
-            // We draw all dots as "dimmed" first
+            // We draw all dots as "dimmed" first using the inactive LED color
             const baseColor = typeof dotColor === 'string' ? dotColor : '#00ff00';
-            const rgb = hexToRgb(baseColor);
-            const dimStyle = rgb ? `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.08)` : '#111';
+            const inactiveColor = inactiveLEDColor || baseColor;
+            const rgb = hexToRgb(inactiveColor);
+            const opacity = inactiveLEDOpacity / 100; // Convert 0-50 to 0.0-0.5
+            const dimStyle = rgb ? `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${opacity})` : '#111';
 
             ctx.fillStyle = dimStyle;
 
@@ -172,7 +196,9 @@ export default function CanvasLEDTicker({
 
                 // Update Animation State
                 if (rowConfig.scrolling !== false && !document.hidden) {
-                    if (timestamp - state.lastTick > rowConfig.stepInterval) {
+                    // Apply speed multiplier: lower multiplier = faster animation
+                    const adjustedStepInterval = rowConfig.stepInterval / speedMultiplierRef.current;
+                    if (timestamp - state.lastTick > adjustedStepInterval) {
                         state.offset++;
                         state.lastTick = timestamp;
                     }
@@ -236,7 +262,7 @@ export default function CanvasLEDTicker({
             window.removeEventListener('resize', handleResize);
             cancelAnimationFrame(animationFrameId);
         };
-    }, [dotSize, dotColor, dotGap, rowSpacing, pageInterval, brightness]); // Re-init if layout config changes
+    }, [dotSize, dotColor, dotGap, rowSpacing, pageInterval, brightness, inactiveLEDOpacity, inactiveLEDColor]); // Re-init if layout config changes
 
     return (
         <div ref={containerRef} style={{ width: '100vw', height: '100dvh', background: 'black', overflow: 'hidden' }}>

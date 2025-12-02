@@ -1,14 +1,18 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Portal } from "./Portal";
+import { Modal } from "./Modal";
 import { RowsManager } from "./config/RowsManager";
 import { DisplaySettings } from "./config/DisplaySettings";
+import { SettingsButtons } from "./config/SettingsButtons";
+import { ClearSettingsButton } from "./config/ClearSettingsButton";
 import { RemoteConnectionUI } from "./RemoteConnectionUI";
 import { RemoteConnectionPrompt } from "./RemoteConnectionPrompt";
 import { useConfig } from "@/context/ConfigContext";
 import { RemoteConnectionState } from "@/lib/remoteControl";
 import { X } from 'lucide-react';
+import { ModalHeader } from './ui/ModalHeader';
+import { JSONSettingsEditorButton } from './config/JSONSettingsEditorButton';
 
 interface SettingsProps {
     onClose: () => void;
@@ -20,6 +24,7 @@ interface SettingsProps {
     onDisconnect: () => void;
     currentRemoteId: string | null;
     clientConnectionState?: RemoteConnectionState;
+    pendingRemoteId?: string | null;
 }
 
 export function Settings({
@@ -30,7 +35,8 @@ export function Settings({
     onConnect,
     onDisconnect,
     currentRemoteId,
-    clientConnectionState
+    clientConnectionState,
+    pendingRemoteId
 }: SettingsProps) {
     const { resetToDefaults } = useConfig();
     const [showPrompt, setShowPrompt] = useState(false);
@@ -76,99 +82,42 @@ export function Settings({
     }, [clientConnectionState, showPrompt]);
 
     return (
-        <Portal>
-            <div
-                className="fixed inset-0 bg-black/95 text-white font-mono z-100 overflow-auto"
-                onClick={onClose}
+
+        <>
+            {/* Remote Connection Prompt */}
+            {showPrompt && (
+                <RemoteConnectionPrompt
+                    onConnect={handleConnect}
+                    onCancel={handleCancelPrompt}
+                    connectionState={clientConnectionState || RemoteConnectionState.DISCONNECTED}
+                    currentRemoteId={currentRemoteId}
+                />
+            )}
+            <Modal
+                isOpen={true}
+                onClose={onClose}
+                className="max-h-dvh lg:max-h-3/4"
             >
-                <button
-                    onClick={onClose}
-                    className="fixed top-6 right-6 w-10 h-10 flex items-center justify-center text-white/70 hover:text-white hover:bg-white/10 rounded-full transition-all z-50"
-                    aria-label="Close settings"
-                >
-                    <X size={24} />
-                </button>
+                <ModalHeader title="Settings" onClose={onClose} />
 
-                <div
-                    className="max-w-2xl mx-auto space-y-12 p-6 py-12"
-                    onClick={(e) => e.stopPropagation()}
-                >
-                    {/* Header */}
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <h1 className="text-2xl font-bold">Settings</h1>
-                            <p className="opacity-70">Manage your LED display settings.</p>
-                        </div>
-
-                        {/* {!currentRemoteId && (
-                            <div className="flex gap-4 items-center">
-                                <button
-                                    onClick={handleClearCache}
-                                    className="text-xs text-yellow-500/70 hover:text-yellow-500 underline transition-colors"
-                                >
-                                    🔄 Clear Cache
-                                </button>
-                                <button
-                                    onClick={handleReset}
-                                    className="text-xs text-white/50 hover:text-white/80 underline transition-colors"
-                                >
-                                    Reset to Defaults
-                                </button>
-                            </div>
-                        )} */}
-                    </div>
-
-                    {/* Remote Connection UI */}
-                    {!currentRemoteId && (
-                        <RemoteConnectionUI
-                            peerId={peerId}
-                            isConnected={isConnected}
-                            onConnectClick={handleConnectClick}
-                        />
-                    )}
-
-                    {/* Remote Connection Prompt */}
-                    {showPrompt && (
-                        <RemoteConnectionPrompt
-                            onConnect={handleConnect}
-                            onCancel={handleCancelPrompt}
-                            connectionState={clientConnectionState || RemoteConnectionState.DISCONNECTED}
-                            currentRemoteId={currentRemoteId}
-                        />
-                    )}
-
-                    {/* Content Area */}
-                    {currentRemoteId ? (
-                        // CLIENT MODE: Content is already wrapped by parent provider
-                        <>
-                            <div className="bg-green-900/20 border border-green-500/30 rounded-lg p-4 mb-6 flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                                    <div>
-                                        <p className="font-bold text-green-400 text-sm">Remote Control Active</p>
-                                        <p className="text-xs text-green-400/70">Connected to {currentRemoteId}</p>
-                                    </div>
-                                </div>
-                                <button
-                                    onClick={handleDisconnect}
-                                    className="text-xs bg-green-500/20 hover:bg-green-500/30 text-green-300 px-3 py-1.5 rounded transition-colors"
-                                >
-                                    Disconnect
-                                </button>
-                            </div>
-                            <RowsManager />
-                            <DisplaySettings />
-                        </>
-                    ) : (
-                        // HOST MODE
-                        <>
-                            <RowsManager />
-                            <DisplaySettings />
-                        </>
-                    )}
-
+                {/* Content */}
+                <div className='relative overflow-auto flex-1 min-h-0 *:p-6 *:py-24 *:border-b *:border-white/20 [&>*:last-child]:border-b-0'>
+                    <RemoteConnectionUI
+                        peerId={peerId}
+                        onConnectClick={handleConnectClick}
+                        isConnected={clientConnectionState === RemoteConnectionState.CONNECTED}
+                        connectedToId={currentRemoteId}
+                        connectionState={clientConnectionState || RemoteConnectionState.DISCONNECTED}
+                    />
+                    <RowsManager />
+                    <DisplaySettings />
+                    <SettingsButtons />
+                    {/* <div className='flex flex-col items-center justify-center gap-4'>
+                        <JSONSettingsEditorButton />
+                        <ClearSettingsButton />
+                    </div> */}
                 </div>
-            </div>
-        </Portal>
+            </Modal>
+        </>
     );
 }

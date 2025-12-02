@@ -3,10 +3,10 @@
 import { useState } from 'react';
 import { useConfig } from '@/context/ConfigContext';
 import { RowEditor } from './RowEditor';
-import { CirclePlus } from 'lucide-react';
+import { SettingsHeader } from './SettingsHeader';
 
 export function RowsManager() {
-    const { rows, addRow, updateRow, deleteRow, moveRow, addAllPlugins } = useConfig();
+    const { rows, addRow, updateRow, deleteRow, moveRow, resetRows, isRemoteMode } = useConfig();
     const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
 
     const handleDragStart = (index: number) => {
@@ -26,13 +26,16 @@ export function RowsManager() {
 
     return (
         <div className="space-y-6">
-            <div className="flex items-center gap-2">
-                <p className="font-bold">{rows.length} Row{rows.length === 1 ? '' : 's'}</p>
-
-                <button className="opacity-50 hover:opacity-100 transition-opacity" onClick={addRow}>
-                    <CirclePlus size={18} />
-                </button>
-            </div>
+            <SettingsHeader
+                title={`${rows.length} Row${rows.length === 1 ? '' : 's'}`}
+                onReset={resetRows}
+                resetLabel="Reset rows to default"
+                resetMessage="Reset all rows to default state? This will remove all custom configurations."
+                showAddButton={true}
+                onAdd={addRow}
+                addButtonLabel="Add row"
+                disabled={false}
+            />
 
             <div>
                 {rows.map((row, index) => (

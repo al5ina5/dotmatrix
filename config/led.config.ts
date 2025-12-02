@@ -45,6 +45,13 @@ export const LED_CONFIG = {
             color: '#00ff00',
             spacing: { betweenLetters: 1, betweenWords: 4, beforeRepeat: 20 }
         },
+        {
+            pluginId: 'holidays',
+            params: { countryCode: 'US' },
+            stepInterval: 100,
+            color: 'yellow',
+            spacing: { betweenLetters: 1, betweenWords: 4, beforeRepeat: 20 }
+        }
 
         // // --- PAGE 2: News & Info ---
         // {

@@ -87,3 +87,4 @@ Render pixel with charColors[colorIndex]
 📦 **Cleaner, more maintainable codebase**
 
 
+

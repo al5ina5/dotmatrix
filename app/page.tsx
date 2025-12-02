@@ -4,10 +4,12 @@ import { useState, useEffect, useRef } from 'react';
 import CanvasLEDTicker from '@/components/CanvasLEDTicker';
 import { Settings } from '@/components/Settings';
 import { ConfigProvider, useConfig } from '@/context/ConfigContext';
+import { UIProvider, useUI } from '@/context/UIContext';
 import { useDataHydration } from '@/hooks/useDataHydration';
 import { useRemoteHost } from '@/hooks/useRemoteHost';
 import { ConnectionCodeOverlay } from '@/components/ConnectionCodeOverlay';
 import { RemoteConnectionState } from '@/lib/remoteControl';
+import LandingComponent from '@/components/LandingComponent';
 
 /**
  * Inner component that consumes ConfigContext
@@ -15,20 +17,38 @@ import { RemoteConnectionState } from '@/lib/remoteControl';
 function TickerDisplay({
   remoteId,
   setRemoteId,
-  clientConnectionState
+  onDisconnect,
+  clientConnectionState,
+  pendingRemoteId
 }: {
   remoteId: string | null,
   setRemoteId: (id: string | null) => void,
-  clientConnectionState: RemoteConnectionState
+  onDisconnect: () => void,
+  clientConnectionState: RemoteConnectionState,
+  pendingRemoteId: string | null
 }) {
   const config = useConfig();
+  const {
+    showSettings,
+    setShowSettings,
+    setPeerId,
+    setIsRemoteConnected,
+  } = useUI();
 
   // Initialize Remote Control Host here to persist connection even when settings are closed
   const { peerId, connectionState, isConnected } = useRemoteHost(!remoteId); // Only be a host if NOT a client
 
+  // Expose host state to UI context for other components (e.g., landing)
+  useEffect(() => {
+    setPeerId(peerId ?? null);
+  }, [peerId, setPeerId]);
+
+  useEffect(() => {
+    setIsRemoteConnected(isConnected);
+  }, [isConnected, setIsRemoteConnected]);
+
   // Hydrate the rows (fetch data for dynamic plugins)
   const hydratedRows = useDataHydration(config.rows);
-  const [showSettings, setShowSettings] = useState(false);
   const holdTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Auto-close settings when a phone connects (as host)
@@ -36,7 +56,7 @@ function TickerDisplay({
     if (isConnected) {
       setShowSettings(false);
     }
-  }, [isConnected]);
+  }, [isConnected, setShowSettings]);
 
   // Long-press to open settings
   const handlePointerDown = () => {
@@ -75,9 +95,10 @@ function TickerDisplay({
           connectionState={connectionState}
           isConnected={isConnected}
           onConnect={(id) => setRemoteId(id)}
-          onDisconnect={() => setRemoteId(null)}
+          onDisconnect={onDisconnect}
           currentRemoteId={remoteId}
           clientConnectionState={clientConnectionState}
+          pendingRemoteId={pendingRemoteId}
         />
       )}
       <div
@@ -96,6 +117,9 @@ function TickerDisplay({
           rowSpacing={config.rowSpacing}
           pageInterval={config.pageInterval}
           brightness={config.brightness}
+          inactiveLEDOpacity={config.inactiveLEDOpacity}
+          inactiveLEDColor={config.inactiveLEDColor}
+          speedMultiplier={config.speedMultiplier}
         />
       </div>
     </>
@@ -107,40 +131,88 @@ function TickerDisplay({
  * Single ConfigProvider with adaptive mode
  */
 export default function Home() {
-  // Persist remote connection ID across reloads
-  const [connectToId, setConnectToId] = useState<string | null>(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('remote-connection-id');
-    }
-    return null;
-  });
-
+  // Track connection state first
   const [clientConnectionState, setClientConnectionState] = useState<RemoteConnectionState>(RemoteConnectionState.DISCONNECTED);
+
+  // Persist remote connection ID across reloads - only set when actually connected
+  // Start with null, will be restored if connection is successful
+  const [connectToId, setConnectToId] = useState<string | null>(null);
+
+  // Track pending connection attempt (code being tried)
+  const [pendingRemoteId, setPendingRemoteId] = useState<string | null>(null);
+
+  // On mount, check if we have a saved connection ID - if so, attempt to reconnect
+  // But don't set connectToId until connection succeeds
+  useEffect(() => {
+    if (typeof window !== 'undefined' && !connectToId && !pendingRemoteId) {
+      const savedId = localStorage.getItem('remote-connection-id');
+      if (savedId) {
+        // Attempt to reconnect to saved ID, but don't switch mode until it succeeds
+        setPendingRemoteId(savedId);
+      }
+    }
+  }, []);
 
   // Update localStorage when connection changes
   const handleSetRemoteId = (id: string | null) => {
-    setConnectToId(id);
+    // When setting a remote ID, we're attempting to connect
+    // Don't switch mode yet - wait for connection to succeed
+    setPendingRemoteId(id);
+    // Don't set connectToId until connection succeeds
+  };
+
+  // Handle disconnection - clear both pending and connected
+  const handleDisconnect = () => {
+    setPendingRemoteId(null);
+    setConnectToId(null);
     if (typeof window !== 'undefined') {
-      if (id) {
-        localStorage.setItem('remote-connection-id', id);
-      } else {
-        localStorage.removeItem('remote-connection-id');
-      }
+      localStorage.removeItem('remote-connection-id');
     }
   };
 
+  // Switch to remote mode when connection succeeds
+  useEffect(() => {
+    if (clientConnectionState === RemoteConnectionState.CONNECTED && pendingRemoteId) {
+      // Connection successful - switch to remote mode
+      setConnectToId(pendingRemoteId);
+      setPendingRemoteId(null);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('remote-connection-id', pendingRemoteId);
+      }
+    } else if (clientConnectionState === RemoteConnectionState.ERROR && pendingRemoteId) {
+      // Connection failed - clear pending
+      setPendingRemoteId(null);
+    } else if (clientConnectionState === RemoteConnectionState.DISCONNECTED && connectToId) {
+      // Disconnected - clear connected state
+      setConnectToId(null);
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('remote-connection-id');
+      }
+    }
+  }, [clientConnectionState, pendingRemoteId, connectToId]);
+
+  // Determine if we should be in remote mode (only when actually connected)
+  const isRemoteMode = connectToId !== null && clientConnectionState === RemoteConnectionState.CONNECTED;
+  // Pass the peerId for connection attempt (pending or connected)
+  const peerIdToConnect = pendingRemoteId || connectToId;
+
   return (
-    <ConfigProvider
-      mode={connectToId ? 'remote' : 'local'}
-      remotePeerId={connectToId}
-      onRemoteConnectionStateChange={setClientConnectionState}
-    >
-      <TickerDisplay
-        remoteId={connectToId}
-        setRemoteId={handleSetRemoteId}
-        clientConnectionState={clientConnectionState}
-      />
-    </ConfigProvider>
+    <UIProvider>
+      <ConfigProvider
+        mode={isRemoteMode ? 'remote' : 'local'}
+        remotePeerId={peerIdToConnect}
+        onRemoteConnectionStateChange={setClientConnectionState}
+      >
+        <LandingComponent />
+        <TickerDisplay
+          remoteId={connectToId}
+          setRemoteId={handleSetRemoteId}
+          onDisconnect={handleDisconnect}
+          clientConnectionState={clientConnectionState}
+          pendingRemoteId={pendingRemoteId}
+        />
+      </ConfigProvider>
+    </UIProvider>
   );
 }
 

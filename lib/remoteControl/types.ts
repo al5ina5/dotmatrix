@@ -26,6 +26,9 @@ export interface RemoteConfig {
         rowSpacing: number;
         pageInterval: number;
         brightness: number;
+        inactiveLEDOpacity: number;
+        inactiveLEDColor: string;
+        speedMultiplier: number;
     };
 }
 

@@ -97,6 +97,9 @@ export function useRemoteHost(enabled: boolean) {
                 rowSpacing: config.rowSpacing,
                 pageInterval: config.pageInterval,
                 brightness: config.brightness,
+                inactiveLEDOpacity: config.inactiveLEDOpacity,
+                inactiveLEDColor: config.inactiveLEDColor,
+                speedMultiplier: config.speedMultiplier,
             }
         };
 
@@ -121,6 +124,9 @@ export function useRemoteHost(enabled: boolean) {
         config.rowSpacing,
         config.pageInterval,
         config.brightness,
+        config.inactiveLEDOpacity,
+        config.inactiveLEDColor,
+        config.speedMultiplier,
         connectionState
     ]);
 

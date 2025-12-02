@@ -8,8 +8,8 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-azeret-mono);
+  --font-mono: var(--font-azeret-mono);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -19,19 +19,24 @@
   }
 }
 
-html, body {
+html,
+body {
   margin: 0;
   padding: 0;
   width: 100%;
-  height: 100dvh; /* Dynamic viewport height - accounts for mobile browser chrome */
+  height: 100dvh;
+  /* Dynamic viewport height - accounts for mobile browser chrome */
   overflow: hidden;
   background: #000000;
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-azeret-mono), monospace;
   position: fixed;
-  overscroll-behavior: none; /* Prevent pull-to-refresh */
-  touch-action: pan-x pan-y; /* Allow touch but prevent unwanted gestures */
-  -webkit-user-select: none; /* Prevent text selection */
+  overscroll-behavior: none;
+  /* Prevent pull-to-refresh */
+  touch-action: pan-x pan-y;
+  /* Allow touch but prevent unwanted gestures */
+  -webkit-user-select: none;
+  /* Prevent text selection */
   user-select: none;
 }
 

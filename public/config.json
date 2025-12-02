@@ -1,0 +1,74 @@
+{
+    "rows": [
+        {
+            "pluginId": "clock",
+            "params": {
+                "format": "12h",
+                "showSeconds": true,
+                "updateInterval": 1000
+            },
+            "stepInterval": 300,
+            "scrolling": false,
+            "alignment": "center",
+            "spacing": {
+                "betweenLetters": 1,
+                "betweenWords": 4,
+                "beforeRepeat": 12
+            }
+        },
+        {
+            "pluginId": "weather",
+            "params": {
+                "zipCode": "34120",
+                "unit": "F"
+            },
+            "stepInterval": 120,
+            "color": "#0099ff",
+            "spacing": {
+                "betweenLetters": 1,
+                "betweenWords": 4,
+                "beforeRepeat": 12
+            }
+        },
+        {
+            "pluginId": "crypto",
+            "params": {
+                "coins": [
+                    "bitcoin",
+                    "ethereum",
+                    "sonic-3"
+                ]
+            },
+            "stepInterval": 120,
+            "color": "#00ff00",
+            "spacing": {
+                "betweenLetters": 1,
+                "betweenWords": 4,
+                "beforeRepeat": 20
+            }
+        },
+        {
+            "pluginId": "holidays",
+            "params": {
+                "countryCode": "US"
+            },
+            "stepInterval": 100,
+            "color": "yellow",
+            "spacing": {
+                "betweenLetters": 1,
+                "betweenWords": 4,
+                "beforeRepeat": 20
+            }
+        }
+    ],
+    "displaySettings": {
+        "dotSize": 6,
+        "dotGap": 2,
+        "dotColor": "#00ff00",
+        "rowSpacing": 4,
+        "pageInterval": 10000,
+        "brightness": 100,
+        "inactiveLEDOpacity": 8,
+        "inactiveLEDColor": "#00ff00"
+    }
+}

@@ -19,8 +19,8 @@ export const CryptoPlugin: LEDPlugin<CryptoParams> = {
             key: 'coins',
             type: 'array',
             label: 'Coins to Track',
-            defaultValue: ['bitcoin', 'ethereum'],
-            placeholder: 'bitcoin, ethereum, sonic-3'
+            defaultValue: ['bitcoin', 'ethereum', 'solana'],
+            placeholder: 'bitcoin, ethereum, solana'
         },
         {
             key: 'currency',

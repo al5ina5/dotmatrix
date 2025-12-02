@@ -23,13 +23,25 @@ interface ConfigContextType {
     rowSpacing: number;
     pageInterval: number;
     brightness: number;
+    inactiveLEDOpacity: number;
+    inactiveLEDColor: string;
+    speedMultiplier: number;
     updateDisplaySetting: (field: string, value: number | string) => void;
 
     // Reset
     resetToDefaults: () => void;
+    resetRows: () => void;
+    resetDisplaySettings: () => void;
 
     // Admin/Testing
     addAllPlugins: () => void;
+
+    // Export/Import
+    exportConfig: () => StoredConfig;
+    importConfig: (config: StoredConfig) => void;
+
+    // Mode info
+    isRemoteMode: boolean;
 }
 
 export const ConfigContext = createContext<ConfigContextType | undefined>(undefined);
@@ -69,6 +81,27 @@ function validateStoredConfig(data: any): StoredConfig | null {
         data.displaySettings.brightness = 100;
     }
 
+    // Ensure displaySettings exists
+    if (!data.displaySettings) {
+        data.displaySettings = {} as any;
+    }
+
+    // Migrate old configs without inactiveLEDOpacity setting
+    if (typeof data.displaySettings.inactiveLEDOpacity !== 'number') {
+        data.displaySettings.inactiveLEDOpacity = 8;
+    }
+
+    // Migrate old configs without inactiveLEDColor setting
+    if (typeof data.displaySettings.inactiveLEDColor !== 'string') {
+        // Use the same color as dotColor for backward compatibility
+        data.displaySettings.inactiveLEDColor = data.displaySettings.dotColor || '#00ff00';
+    }
+    
+    // Migrate old configs without speedMultiplier setting
+    if (typeof data.displaySettings.speedMultiplier !== 'number') {
+        data.displaySettings.speedMultiplier = 1.0;
+    }
+
     return data as StoredConfig;
 }
 
@@ -79,9 +112,9 @@ interface ConfigProviderProps {
     onRemoteConnectionStateChange?: (state: RemoteConnectionState) => void;
 }
 
-export function ConfigProvider({ 
-    children, 
-    mode = 'local', 
+export function ConfigProvider({
+    children,
+    mode = 'local',
     remotePeerId = null,
     onRemoteConnectionStateChange
 }: ConfigProviderProps) {
@@ -95,6 +128,9 @@ export function ConfigProvider({
             rowSpacing: LED_CONFIG.layout.rowSpacing,
             pageInterval: LED_CONFIG.layout.pageInterval,
             brightness: LED_CONFIG.display.brightness ?? 100,
+            inactiveLEDOpacity: 8, // 8% opacity for inactive LEDs
+            inactiveLEDColor: LED_CONFIG.display.dotColor, // Use same color as active LEDs by default
+            speedMultiplier: 1.0, // 1.0 = normal speed
         }
     };
 
@@ -123,7 +159,8 @@ export function ConfigProvider({
         }));
     }, [setLocalConfig]);
 
-    // REMOTE STATE: Connect to remote host when in remote mode
+    // REMOTE STATE: Connect to remote host when peerId is provided
+    // Track connection state even in local mode (for connection attempts)
     const {
         connectionState,
         isConnected,
@@ -133,14 +170,14 @@ export function ConfigProvider({
         sendDeleteRow,
         sendMoveRow,
         sendUpdateDisplay,
-    } = useRemoteClient(mode === 'remote' ? remotePeerId : null);
+    } = useRemoteClient(remotePeerId);
 
-    // Notify parent of connection state changes
+    // Notify parent of connection state changes (even when not in remote mode, so we can track connection attempts)
     useEffect(() => {
-        if (mode === 'remote' && onRemoteConnectionStateChange) {
+        if (remotePeerId && onRemoteConnectionStateChange) {
             onRemoteConnectionStateChange(connectionState);
         }
-    }, [connectionState, mode, onRemoteConnectionStateChange]);
+    }, [connectionState, remotePeerId, onRemoteConnectionStateChange]);
 
     // ACTION HANDLERS: Switch between local and remote based on mode
     const addRow = useCallback(() => {
@@ -207,6 +244,63 @@ export function ConfigProvider({
         }
     }, [mode, setLocalConfig, defaultConfig]);
 
+    const resetRows = useCallback(() => {
+        if (mode === 'remote') {
+            console.warn('Cannot reset rows in remote mode');
+        } else {
+            setLocalConfig(prev => ({
+                ...prev,
+                rows: [...defaultConfig.rows]
+            }));
+        }
+    }, [mode, setLocalConfig, defaultConfig]);
+
+    const resetDisplaySettings = useCallback(() => {
+        if (mode === 'remote') {
+            console.warn('Cannot reset display settings in remote mode');
+        } else {
+            setLocalConfig(prev => ({
+                ...prev,
+                displaySettings: { ...defaultConfig.displaySettings }
+            }));
+        }
+    }, [mode, setLocalConfig, defaultConfig]);
+
+    const exportConfig = useCallback((): StoredConfig => {
+        // Return current config - works for both local and remote
+        if (mode === 'remote') {
+            const remoteDisplaySettings: any = remoteConfig?.displaySettings || {};
+            return {
+                rows: remoteConfig?.rows || [],
+                displaySettings: {
+                    dotSize: remoteDisplaySettings.dotSize || 2,
+                    dotGap: remoteDisplaySettings.dotGap || 1,
+                    dotColor: remoteDisplaySettings.dotColor || '#00ff00',
+                    rowSpacing: remoteDisplaySettings.rowSpacing || 1,
+                    pageInterval: remoteDisplaySettings.pageInterval || 2000,
+                    brightness: remoteDisplaySettings.brightness || 100,
+                    inactiveLEDOpacity: remoteDisplaySettings.inactiveLEDOpacity ?? 8,
+                    inactiveLEDColor: remoteDisplaySettings.inactiveLEDColor || remoteDisplaySettings.dotColor || '#00ff00',
+                    speedMultiplier: remoteDisplaySettings.speedMultiplier ?? 1.0
+                }
+            };
+        }
+        return localConfig;
+    }, [mode, localConfig, remoteConfig]);
+
+    const importConfig = useCallback((config: StoredConfig) => {
+        if (mode === 'remote') {
+            console.warn('Cannot import config in remote mode');
+            return;
+        }
+
+        // Validate and migrate the imported config
+        const validated = validateStoredConfig(config);
+        if (validated) {
+            setLocalConfig(validated);
+        }
+    }, [mode, setLocalConfig]);
+
     const addAllPlugins = useCallback(() => {
         if (mode === 'remote') {
             // TODO: Implement bulk row operations for remote mode
@@ -267,17 +361,24 @@ export function ConfigProvider({
 
     // CONTEXT VALUE: Use remote data when in remote mode, local data otherwise
     const contextValue = useMemo(() => {
-        const currentRows = mode === 'remote' ? (remoteConfig?.rows || []) : rows;
-        const currentDisplaySettings = mode === 'remote' 
-            ? (remoteConfig?.displaySettings || {
-                dotSize: 2,
-                dotGap: 1,
-                dotColor: '#00ff00',
-                rowSpacing: 1,
-                pageInterval: 2000,
-                brightness: 100
-            })
-            : displaySettings;
+        const currentRows = mode === 'remote' ? (remoteConfig?.rows || []) : (rows || []);
+        let currentDisplaySettings: DisplaySettings;
+        if (mode === 'remote') {
+            const remoteDisplaySettings: any = remoteConfig?.displaySettings || {};
+            currentDisplaySettings = {
+                dotSize: remoteDisplaySettings.dotSize || 2,
+                dotGap: remoteDisplaySettings.dotGap || 1,
+                dotColor: remoteDisplaySettings.dotColor || '#00ff00',
+                rowSpacing: remoteDisplaySettings.rowSpacing || 1,
+                pageInterval: remoteDisplaySettings.pageInterval || 2000,
+                brightness: remoteDisplaySettings.brightness || 100,
+                inactiveLEDOpacity: remoteDisplaySettings.inactiveLEDOpacity ?? 8,
+                inactiveLEDColor: remoteDisplaySettings.inactiveLEDColor || remoteDisplaySettings.dotColor || '#00ff00',
+                speedMultiplier: remoteDisplaySettings.speedMultiplier ?? 1.0
+            };
+        } else {
+            currentDisplaySettings = displaySettings;
+        }
 
         return {
             rows: currentRows,
@@ -291,22 +392,34 @@ export function ConfigProvider({
             rowSpacing: currentDisplaySettings.rowSpacing,
             pageInterval: currentDisplaySettings.pageInterval,
             brightness: currentDisplaySettings.brightness ?? 100,
+            inactiveLEDOpacity: currentDisplaySettings?.inactiveLEDOpacity ?? 8,
+            inactiveLEDColor: currentDisplaySettings?.inactiveLEDColor || currentDisplaySettings?.dotColor || '#00ff00',
+            speedMultiplier: currentDisplaySettings?.speedMultiplier ?? 1.0,
             updateDisplaySetting,
             resetToDefaults,
+            resetRows,
+            resetDisplaySettings,
             addAllPlugins,
+            exportConfig,
+            importConfig,
+            isRemoteMode: mode === 'remote',
         };
     }, [
-        mode, 
-        rows, 
-        displaySettings, 
-        remoteConfig, 
-        addRow, 
-        updateRow, 
-        deleteRow, 
-        moveRow, 
-        updateDisplaySetting, 
-        resetToDefaults, 
-        addAllPlugins
+        mode,
+        rows,
+        displaySettings,
+        remoteConfig,
+        addRow,
+        updateRow,
+        deleteRow,
+        moveRow,
+        updateDisplaySetting,
+        resetToDefaults,
+        resetRows,
+        resetDisplaySettings,
+        addAllPlugins,
+        exportConfig,
+        importConfig
     ]);
 
     return (
