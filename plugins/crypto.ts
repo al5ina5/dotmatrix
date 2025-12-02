@@ -4,6 +4,9 @@ import { withPluginErrorHandling } from '@/lib/pluginHelpers';
 interface CryptoParams {
     coins: string[];  // CoinGecko IDs (e.g., 'bitcoin', 'ethereum', 'sonic-3')
     currency?: string;
+    positiveColor?: string;
+    negativeColor?: string;
+    labelColor?: string;
 }
 
 export const CryptoPlugin: LEDPlugin<CryptoParams> = {
@@ -29,10 +32,28 @@ export const CryptoPlugin: LEDPlugin<CryptoParams> = {
                 { value: 'eur', label: 'EUR' },
                 { value: 'gbp', label: 'GBP' }
             ]
+        },
+        {
+            key: 'positiveColor',
+            type: 'color',
+            label: 'Positive Change Color (↑)',
+            defaultValue: '#228B22'
+        },
+        {
+            key: 'negativeColor',
+            type: 'color',
+            label: 'Negative Change Color (↓)',
+            defaultValue: '#E33E33'
+        },
+        {
+            key: 'labelColor',
+            type: 'color',
+            label: 'Symbol Label Color',
+            defaultValue: '#888888'
         }
     ],
 
-    fetch: async ({ coins, currency = 'usd' }) => withPluginErrorHandling(
+    fetch: async ({ coins, currency = 'usd', positiveColor = '#228B22', negativeColor = '#E33E33', labelColor = '#888888' }) => withPluginErrorHandling(
         'crypto',
         async () => {
             if (!coins || coins.length === 0) return 'No coins configured';
@@ -75,7 +96,7 @@ export const CryptoPlugin: LEDPlugin<CryptoParams> = {
                 const symbol = symbolMap[coinId] || coinId.toUpperCase().slice(0, 4);
 
                 if (price === undefined) {
-                    segments.push({ text: `${symbol}: ???`, color: '#888888' });
+                    segments.push({ text: `${symbol}: ???`, color: labelColor });
                 } else {
                     // Format price nicely
                     let priceStr = price.toString();
@@ -93,17 +114,17 @@ export const CryptoPlugin: LEDPlugin<CryptoParams> = {
                         arrow = change >= 0 ? '↑' : '↓';
                     }
 
-                    // Determine color based on change
-                    const priceColor = change === undefined ? '#ffffff' : (change >= 0 ? '#228B22' : '#E33E33');
+                    // Determine color based on change - now user-configurable!
+                    const priceColor = change === undefined ? '#ffffff' : (change >= 0 ? positiveColor : negativeColor);
 
-                    // Add segments: label (gray), price (green/red), arrow (green/red)
-                    segments.push({ text: `${symbol}: `, color: '#888888' });
+                    // Add segments: label (custom color), price (custom color based on change)
+                    segments.push({ text: `${symbol}: `, color: labelColor });
                     segments.push({ text: `$${priceStr} ${arrow}`, color: priceColor });
                 }
 
                 // Add spacing between coins (except for the last one)
                 if (i < coins.length - 1) {
-                    segments.push({ text: '   ', color: '#888888' });
+                    segments.push({ text: '   ', color: labelColor });
                 }
             }
 

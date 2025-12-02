@@ -4,6 +4,9 @@ import { withPluginErrorHandling } from '@/lib/pluginHelpers';
 interface StocksPluginParams {
     apiKey: string;
     symbols: string[];
+    positiveColor?: string;
+    negativeColor?: string;
+    labelColor?: string;
 }
 
 export const StocksPlugin: LEDPlugin<StocksPluginParams> = {
@@ -26,12 +29,36 @@ export const StocksPlugin: LEDPlugin<StocksPluginParams> = {
             type: 'array',
             defaultValue: ['AAPL', 'GOOGL', 'MSFT'],
             placeholder: 'AAPL, GOOGL, TSLA',
+        },
+        {
+            key: 'positiveColor',
+            type: 'color',
+            label: 'Positive Change Color (↑)',
+            defaultValue: '#228B22'
+        },
+        {
+            key: 'negativeColor',
+            type: 'color',
+            label: 'Negative Change Color (↓)',
+            defaultValue: '#E33E33'
+        },
+        {
+            key: 'labelColor',
+            type: 'color',
+            label: 'Symbol Label Color',
+            defaultValue: '#888888'
         }
     ],
     fetch: async (params) => withPluginErrorHandling(
         'stocks',
         async () => {
-            const { apiKey, symbols = ['AAPL', 'GOOGL', 'MSFT'] } = params;
+            const {
+                apiKey,
+                symbols = ['AAPL', 'GOOGL', 'MSFT'],
+                positiveColor = '#228B22',
+                negativeColor = '#E33E33',
+                labelColor = '#888888'
+            } = params;
 
             if (!apiKey) {
                 return '📈 Stocks: Add Finnhub API key in settings (free at finnhub.io)';
@@ -56,15 +83,38 @@ export const StocksPlugin: LEDPlugin<StocksPluginParams> = {
                 const price = data.c?.toFixed(2) || 'N/A';
                 const change = data.d?.toFixed(2) || '0';
                 const changePercent = data.dp?.toFixed(2) || '0';
-                const arrow = parseFloat(change) >= 0 ? '↑' : '↓';
+                const changeNum = parseFloat(change);
+                const arrow = changeNum >= 0 ? '↑' : '↓';
 
-                return `${symbol} $${price} ${arrow}${Math.abs(parseFloat(changePercent))}%`;
+                // Determine color based on change
+                const priceColor = changeNum >= 0 ? positiveColor : negativeColor;
+
+                return {
+                    symbol,
+                    price,
+                    changePercent: Math.abs(parseFloat(changePercent)),
+                    arrow,
+                    priceColor
+                };
             });
 
             const results = await Promise.all(stockPromises);
-            return `📈 ${results.join(' | ')}`;
+
+            // Build colored segments
+            const segments = [{ text: '📈 ', color: labelColor }];
+
+            results.forEach((stock, i) => {
+                segments.push({ text: `${stock.symbol} `, color: labelColor });
+                segments.push({ text: `$${stock.price} ${stock.arrow}${stock.changePercent}%`, color: stock.priceColor });
+
+                if (i < results.length - 1) {
+                    segments.push({ text: ' | ', color: labelColor });
+                }
+            });
+
+            return segments;
         },
-        params.symbols?.length 
+        params.symbols?.length
             ? `📈 ${params.symbols.join(', ')}: Loading...`
             : '📈 Stocks: Configure in settings'
     )

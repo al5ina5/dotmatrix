@@ -18,12 +18,35 @@ interface PluginConfigFormProps {
 
 export function PluginConfigForm({ plugin, params, onParamsChange }: PluginConfigFormProps) {
     const configSchema = plugin.configSchema || [];
+    const [initialized, setInitialized] = React.useState(false);
+
+    // Initialize missing params with default values (especially for newly added fields like colors)
+    React.useEffect(() => {
+        if (initialized && plugin.id === initialized) return;
+
+        let needsUpdate = false;
+        const updatedParams = { ...params };
+
+        configSchema.forEach(field => {
+            if (updatedParams[field.key] === undefined && field.defaultValue !== undefined) {
+                updatedParams[field.key] = field.defaultValue;
+                needsUpdate = true;
+            }
+        });
+
+        if (needsUpdate) {
+            onParamsChange(updatedParams);
+        }
+
+        setInitialized(plugin.id as any);
+    }, [plugin.id, configSchema]);
 
     const handleFieldChange = (key: string, value: any) => {
-        onParamsChange({
+        const newParams = {
             ...params,
             [key]: value
-        });
+        };
+        onParamsChange(newParams);
     };
 
     const renderField = (field: ConfigField) => {

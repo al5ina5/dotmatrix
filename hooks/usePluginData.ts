@@ -6,9 +6,30 @@ import { LEDContent } from '@/plugins/types';
 /**
  * Generate a consistent SWR cache key for a plugin + params combination
  * This ensures the same data is shared across all components
+ *
+ * Only includes params that actually affect the API data (excludes display-only params)
  */
 export function getPluginCacheKey(pluginId: string, params?: any): string {
-    return `plugin:${pluginId}:${JSON.stringify(params || {})}`;
+    if (!params) return `plugin:${pluginId}:empty`;
+
+    // Create a copy and remove display-only params that don't affect API calls
+    const dataParams = { ...params };
+
+    // Remove display-only params for each plugin
+    const plugin = PLUGIN_REGISTRY[pluginId];
+    if (plugin?.configSchema) {
+        // Remove color fields (they only affect rendering, not API data)
+        plugin.configSchema.forEach(field => {
+            if (field.type === 'color') {
+                delete dataParams[field.key];
+            }
+        });
+
+        // Future: Add other display-only field types here
+        // if (field.type === 'some-display-only-type') { ... }
+    }
+
+    return `plugin:${pluginId}:${JSON.stringify(dataParams)}`;
 }
 
 /**

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Portal } from './Portal';
 import { RemoteConnectionState } from '@/lib/remoteControl';
+import { X } from 'lucide-react';
 
 interface RemoteConnectionPromptProps {
     onConnect: (peerId: string) => void;
@@ -88,10 +89,7 @@ export function RemoteConnectionPrompt({
                     className="absolute top-6 right-6 w-10 h-10 flex items-center justify-center text-white/70 hover:text-white hover:bg-white/10 rounded-full transition-all"
                     aria-label="Cancel"
                 >
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <line x1="18" y1="6" x2="6" y2="18"></line>
-                        <line x1="6" y1="6" x2="18" y2="18"></line>
-                    </svg>
+                    <X size={24} />
                 </button>
 
                 {/* Content */}

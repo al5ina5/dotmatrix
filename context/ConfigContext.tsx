@@ -79,9 +79,9 @@ interface ConfigProviderProps {
     onRemoteConnectionStateChange?: (state: RemoteConnectionState) => void;
 }
 
-export function ConfigProvider({
-    children,
-    mode = 'local',
+export function ConfigProvider({ 
+    children, 
+    mode = 'local', 
     remotePeerId = null,
     onRemoteConnectionStateChange
 }: ConfigProviderProps) {
@@ -268,7 +268,7 @@ export function ConfigProvider({
     // CONTEXT VALUE: Use remote data when in remote mode, local data otherwise
     const contextValue = useMemo(() => {
         const currentRows = mode === 'remote' ? (remoteConfig?.rows || []) : rows;
-        const currentDisplaySettings = mode === 'remote'
+        const currentDisplaySettings = mode === 'remote' 
             ? (remoteConfig?.displaySettings || {
                 dotSize: 2,
                 dotGap: 1,
@@ -296,16 +296,16 @@ export function ConfigProvider({
             addAllPlugins,
         };
     }, [
-        mode,
-        rows,
-        displaySettings,
-        remoteConfig,
-        addRow,
-        updateRow,
-        deleteRow,
-        moveRow,
-        updateDisplaySetting,
-        resetToDefaults,
+        mode, 
+        rows, 
+        displaySettings, 
+        remoteConfig, 
+        addRow, 
+        updateRow, 
+        deleteRow, 
+        moveRow, 
+        updateDisplaySetting, 
+        resetToDefaults, 
         addAllPlugins
     ]);
 

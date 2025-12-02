@@ -26,6 +26,7 @@ export function LEDPreview({
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const scrollOffsetRef = useRef(0);
     const animationFrameRef = useRef<number>(0);
+    const lastContentRef = useRef(content);
 
     const dotSize = 3;
     const dotGap = 1;
@@ -148,12 +149,24 @@ export function LEDPreview({
         };
     }, [content, color, prepared, dotSize, dotGap, height, scrolling, alignment, spacing]);
 
-    // Reset scroll offset when switching modes
+    // Reset scroll offset when switching modes or content type changes significantly
     useEffect(() => {
-        if (!scrolling) {
+        const lastContent = lastContentRef.current;
+        const currentContent = content;
+
+        // Only reset if content type changed (string vs array) or became empty
+        const shouldReset = (
+            (typeof lastContent !== typeof currentContent) ||
+            (Array.isArray(currentContent) && currentContent.length === 0) ||
+            (typeof currentContent === 'string' && !currentContent)
+        );
+
+        if (!scrolling || shouldReset) {
             scrollOffsetRef.current = 0;
         }
-    }, [scrolling]);
+
+        lastContentRef.current = content;
+    }, [scrolling, content]);
 
     const cellSize = dotSize + dotGap;
     // Canvas height is 7 rows of LEDs (no gaps at edges)

@@ -46,6 +46,10 @@ export function RowEditor({ row, index, onUpdate, onDelete, onDragStart, onDragO
     // Pass raw LEDContent to preview - now supports multi-color!
     const previewContent = pluginContent || 'Loading...';
 
+    // Check if plugin has its own color fields
+    const plugin = PLUGIN_REGISTRY[row.pluginId];
+    const hasPluginColorFields = plugin?.configSchema?.some(field => field.type === 'color');
+
     const handlePluginChange = (pluginId: string) => {
         // Initialize with default params from schema
         const plugin = PLUGIN_REGISTRY[pluginId];
@@ -146,11 +150,14 @@ export function RowEditor({ row, index, onUpdate, onDelete, onDragStart, onDragO
 
                     {/* Standard Display Options - Apply to ALL rows */}
 
-                    <ColorPicker
-                        label="Color"
-                        value={row.color || '#00ff00'}
-                        onChange={(color) => handleStandardOptionChange('color', color)}
-                    />
+                    {/* Only show top-level color picker if plugin doesn't have its own color fields */}
+                    {!hasPluginColorFields && (
+                        <ColorPicker
+                            label="Color"
+                            value={row.color || '#00ff00'}
+                            onChange={(color) => handleStandardOptionChange('color', color)}
+                        />
+                    )}
 
                     <Input
                         label="Move Speed (ms)"

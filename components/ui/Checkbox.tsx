@@ -1,4 +1,5 @@
 import React from 'react';
+import { Check } from 'lucide-react';
 
 interface CheckboxProps {
     label: string;
@@ -18,18 +19,7 @@ export function Checkbox({ label, checked, onChange }: CheckboxProps) {
                 />
                 <div className="w-5 h-5 border-2 border-white/30 rounded bg-black/50 peer-checked:bg-blue-500 peer-checked:border-blue-500 transition-all group-hover:border-white/50 flex items-center justify-center">
                     {checked && (
-                        <svg
-                            width="14"
-                            height="14"
-                            viewBox="0 0 14 14"
-                            fill="none"
-                            stroke="white"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                        >
-                            <polyline points="3 7 6 10 11 4" />
-                        </svg>
+                        <Check size={14} color="white" strokeWidth={2} />
                     )}
                 </div>
             </div>
