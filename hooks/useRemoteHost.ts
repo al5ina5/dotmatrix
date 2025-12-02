@@ -70,6 +70,10 @@ export function useRemoteHost(enabled: boolean) {
                 config.deleteRow(msg.index);
                 break;
 
+            case 'MOVE_ROW':
+                config.moveRow(msg.fromIndex, msg.toIndex);
+                break;
+
             case 'UPDATE_DISPLAY':
                 config.updateDisplaySetting(msg.field, msg.value);
                 break;
@@ -92,6 +96,7 @@ export function useRemoteHost(enabled: boolean) {
                 dotColor: config.dotColor,
                 rowSpacing: config.rowSpacing,
                 pageInterval: config.pageInterval,
+                brightness: config.brightness,
             }
         };
 
@@ -115,6 +120,7 @@ export function useRemoteHost(enabled: boolean) {
         config.dotColor,
         config.rowSpacing,
         config.pageInterval,
+        config.brightness,
         connectionState
     ]);
 

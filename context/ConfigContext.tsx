@@ -22,6 +22,7 @@ interface ConfigContextType {
     dotColor: string;
     rowSpacing: number;
     pageInterval: number;
+    brightness: number;
     updateDisplaySetting: (field: string, value: number | string) => void;
 
     // Reset
@@ -63,6 +64,11 @@ function validateStoredConfig(data: any): StoredConfig | null {
         });
     }
 
+    // Migrate old configs without brightness setting
+    if (data.displaySettings && typeof data.displaySettings.brightness !== 'number') {
+        data.displaySettings.brightness = 100;
+    }
+
     return data as StoredConfig;
 }
 
@@ -73,9 +79,9 @@ interface ConfigProviderProps {
     onRemoteConnectionStateChange?: (state: RemoteConnectionState) => void;
 }
 
-export function ConfigProvider({ 
-    children, 
-    mode = 'local', 
+export function ConfigProvider({
+    children,
+    mode = 'local',
     remotePeerId = null,
     onRemoteConnectionStateChange
 }: ConfigProviderProps) {
@@ -88,6 +94,7 @@ export function ConfigProvider({
             dotColor: LED_CONFIG.display.dotColor,
             rowSpacing: LED_CONFIG.layout.rowSpacing,
             pageInterval: LED_CONFIG.layout.pageInterval,
+            brightness: LED_CONFIG.display.brightness ?? 100,
         }
     };
 
@@ -124,6 +131,7 @@ export function ConfigProvider({
         sendUpdateRow,
         sendAddRow,
         sendDeleteRow,
+        sendMoveRow,
         sendUpdateDisplay,
     } = useRemoteClient(mode === 'remote' ? remotePeerId : null);
 
@@ -172,7 +180,7 @@ export function ConfigProvider({
 
     const moveRow = useCallback((fromIndex: number, toIndex: number) => {
         if (mode === 'remote') {
-            console.warn('Move row not implemented for remote mode yet');
+            sendMoveRow(fromIndex, toIndex);
         } else {
             setRows(prev => {
                 const newRows = [...prev];
@@ -181,7 +189,7 @@ export function ConfigProvider({
                 return newRows;
             });
         }
-    }, [mode]);
+    }, [mode, sendMoveRow]);
 
     const updateDisplaySetting = useCallback((field: string, value: number | string) => {
         if (mode === 'remote') {
@@ -260,13 +268,14 @@ export function ConfigProvider({
     // CONTEXT VALUE: Use remote data when in remote mode, local data otherwise
     const contextValue = useMemo(() => {
         const currentRows = mode === 'remote' ? (remoteConfig?.rows || []) : rows;
-        const currentDisplaySettings = mode === 'remote' 
+        const currentDisplaySettings = mode === 'remote'
             ? (remoteConfig?.displaySettings || {
                 dotSize: 2,
                 dotGap: 1,
                 dotColor: '#00ff00',
                 rowSpacing: 1,
-                pageInterval: 2000
+                pageInterval: 2000,
+                brightness: 100
             })
             : displaySettings;
 
@@ -281,21 +290,22 @@ export function ConfigProvider({
             dotColor: currentDisplaySettings.dotColor,
             rowSpacing: currentDisplaySettings.rowSpacing,
             pageInterval: currentDisplaySettings.pageInterval,
+            brightness: currentDisplaySettings.brightness ?? 100,
             updateDisplaySetting,
             resetToDefaults,
             addAllPlugins,
         };
     }, [
-        mode, 
-        rows, 
-        displaySettings, 
-        remoteConfig, 
-        addRow, 
-        updateRow, 
-        deleteRow, 
-        moveRow, 
-        updateDisplaySetting, 
-        resetToDefaults, 
+        mode,
+        rows,
+        displaySettings,
+        remoteConfig,
+        addRow,
+        updateRow,
+        deleteRow,
+        moveRow,
+        updateDisplaySetting,
+        resetToDefaults,
         addAllPlugins
     ]);
 

@@ -95,6 +95,7 @@ function TickerDisplay({
           dotGap={config.dotGap}
           rowSpacing={config.rowSpacing}
           pageInterval={config.pageInterval}
+          brightness={config.brightness}
         />
       </div>
     </>
@@ -106,8 +107,27 @@ function TickerDisplay({
  * Single ConfigProvider with adaptive mode
  */
 export default function Home() {
-  const [connectToId, setConnectToId] = useState<string | null>(null);
+  // Persist remote connection ID across reloads
+  const [connectToId, setConnectToId] = useState<string | null>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('remote-connection-id');
+    }
+    return null;
+  });
+
   const [clientConnectionState, setClientConnectionState] = useState<RemoteConnectionState>(RemoteConnectionState.DISCONNECTED);
+
+  // Update localStorage when connection changes
+  const handleSetRemoteId = (id: string | null) => {
+    setConnectToId(id);
+    if (typeof window !== 'undefined') {
+      if (id) {
+        localStorage.setItem('remote-connection-id', id);
+      } else {
+        localStorage.removeItem('remote-connection-id');
+      }
+    }
+  };
 
   return (
     <ConfigProvider
@@ -115,9 +135,9 @@ export default function Home() {
       remotePeerId={connectToId}
       onRemoteConnectionStateChange={setClientConnectionState}
     >
-      <TickerDisplay 
-        remoteId={connectToId} 
-        setRemoteId={setConnectToId}
+      <TickerDisplay
+        remoteId={connectToId}
+        setRemoteId={handleSetRemoteId}
         clientConnectionState={clientConnectionState}
       />
     </ConfigProvider>

@@ -11,6 +11,7 @@ export type RemoteMessage =
     | { type: 'UPDATE_ROW'; index: number; row: LEDRowConfig }
     | { type: 'ADD_ROW' }
     | { type: 'DELETE_ROW'; index: number }
+    | { type: 'MOVE_ROW'; fromIndex: number; toIndex: number }
     | { type: 'UPDATE_DISPLAY'; field: string; value: number | string };
 
 /**
@@ -24,6 +25,7 @@ export interface RemoteConfig {
         dotColor: string;
         rowSpacing: number;
         pageInterval: number;
+        brightness: number;
     };
 }
 

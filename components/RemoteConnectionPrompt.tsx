@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Portal } from './Portal';
 import { RemoteConnectionState } from '@/lib/remoteControl';
 
@@ -8,6 +8,7 @@ interface RemoteConnectionPromptProps {
     onConnect: (peerId: string) => void;
     onCancel: () => void;
     connectionState?: RemoteConnectionState;
+    currentRemoteId?: string | null;
 }
 
 /**
@@ -16,10 +17,18 @@ interface RemoteConnectionPromptProps {
 export function RemoteConnectionPrompt({
     onConnect,
     onCancel,
-    connectionState = RemoteConnectionState.DISCONNECTED
+    connectionState = RemoteConnectionState.DISCONNECTED,
+    currentRemoteId = null
 }: RemoteConnectionPromptProps) {
-    const [code, setCode] = useState('');
-    const [lastAttemptedCode, setLastAttemptedCode] = useState<string | null>(null);
+    // Initialize with saved connection ID or empty string
+    const [code, setCode] = useState(() => {
+        if (currentRemoteId) return currentRemoteId;
+        if (typeof window !== 'undefined') {
+            return localStorage.getItem('remote-connection-id') || '';
+        }
+        return '';
+    });
+    const [lastAttemptedCode, setLastAttemptedCode] = useState<string | null>(currentRemoteId);
 
     const handleConnect = () => {
         if (code.length === 4 && connectionState !== RemoteConnectionState.CONNECTING) {
@@ -72,7 +81,7 @@ export function RemoteConnectionPrompt({
 
     return (
         <Portal>
-            <div className="fixed inset-0 bg-black/98 text-white font-mono z-60 flex items-center justify-center">
+            <div className="fixed inset-0 bg-black/98 text-white font-mono z-200 flex items-center justify-center">
                 {/* Close button */}
                 <button
                     onClick={onCancel}

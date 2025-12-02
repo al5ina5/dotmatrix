@@ -3,14 +3,27 @@
 import React from 'react';
 import { useConfig } from '@/context/ConfigContext';
 import { Input } from '@/components/ui/Input';
+import { Slider } from '@/components/ui/Slider';
 
 export function DisplaySettings() {
-    const { dotSize, dotGap, dotColor, rowSpacing, pageInterval, updateDisplaySetting } = useConfig();
+    const { dotSize, dotGap, dotColor, rowSpacing, pageInterval, brightness, updateDisplaySetting } = useConfig();
 
     return (
         <div className="space-y-6">
             <p className="font-bold">Display Settings</p>
 
+            {/* Brightness Slider - Full Width */}
+            <Slider
+                label="Brightness"
+                id="brightness"
+                value={brightness}
+                min={5}
+                max={100}
+                step={5}
+                onChange={(value) => updateDisplaySetting('brightness', value)}
+            />
+
+            {/* Other Settings - Grid */}
             <div className="grid grid-cols-4 gap-6">
                 <Input
                     label="Dot Size"

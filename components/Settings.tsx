@@ -135,6 +135,7 @@ export function Settings({
                             onConnect={handleConnect}
                             onCancel={handleCancelPrompt}
                             connectionState={clientConnectionState || RemoteConnectionState.DISCONNECTED}
+                            currentRemoteId={currentRemoteId}
                         />
                     )}
 

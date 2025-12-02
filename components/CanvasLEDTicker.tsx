@@ -12,6 +12,7 @@ interface CanvasLEDTickerProps {
     dotGap: number;
     rowSpacing: number;
     pageInterval: number;
+    brightness: number; // 0-100
 }
 
 export default function CanvasLEDTicker({
@@ -21,6 +22,7 @@ export default function CanvasLEDTicker({
     dotGap,
     rowSpacing,
     pageInterval,
+    brightness,
 }: CanvasLEDTickerProps) {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const containerRef = useRef<HTMLDivElement>(null);
@@ -208,8 +210,17 @@ export default function CanvasLEDTicker({
                         );
 
                         if (active && colorIndex >= 0) {
-                            // Set color for this character and draw bright pixel
-                            ctx.fillStyle = prepared.charColors[colorIndex];
+                            // Apply brightness to color
+                            const brightnessFactor = brightness / 100;
+                            const pixelColor = prepared.charColors[colorIndex];
+                            const rgb = hexToRgb(pixelColor);
+                            
+                            if (rgb) {
+                                ctx.fillStyle = `rgb(${Math.floor(rgb.r * brightnessFactor)}, ${Math.floor(rgb.g * brightnessFactor)}, ${Math.floor(rgb.b * brightnessFactor)})`;
+                            } else {
+                                ctx.fillStyle = pixelColor;
+                            }
+                            
                             ctx.fillRect(c * pitch, screenRow * pitch, dotSize, dotSize);
                         }
                     }
@@ -225,7 +236,7 @@ export default function CanvasLEDTicker({
             window.removeEventListener('resize', handleResize);
             cancelAnimationFrame(animationFrameId);
         };
-    }, [dotSize, dotColor, dotGap, rowSpacing, pageInterval]); // Re-init if layout config changes
+    }, [dotSize, dotColor, dotGap, rowSpacing, pageInterval, brightness]); // Re-init if layout config changes
 
     return (
         <div ref={containerRef} style={{ width: '100vw', height: '100dvh', background: 'black', overflow: 'hidden' }}>

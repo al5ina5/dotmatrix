@@ -14,6 +14,8 @@ export interface DisplaySettings {
     rowSpacing: number;
     /** Interval between page transitions in milliseconds */
     pageInterval: number;
+    /** Brightness level (0-100) */
+    brightness: number;
 }
 
 /**

@@ -9,6 +9,7 @@ export const LED_CONFIG = {
         dotSize: 6,
         dotGap: 2,
         dotColor: '#00ff00', // Default LED color (green)
+        brightness: 100, // Brightness level (0-100)
     },
 
     // Layout Settings

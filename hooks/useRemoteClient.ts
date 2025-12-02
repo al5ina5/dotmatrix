@@ -12,6 +12,7 @@ interface RemoteClientHook {
     sendUpdateRow: (index: number, row: LEDRowConfig) => void;
     sendAddRow: () => void;
     sendDeleteRow: (index: number) => void;
+    sendMoveRow: (fromIndex: number, toIndex: number) => void;
     sendUpdateDisplay: (field: string, value: number | string) => void;
 }
 
@@ -78,6 +79,10 @@ export function useRemoteClient(peerId: string | null): RemoteClientHook {
         adapterRef.current?.send({ type: 'DELETE_ROW', index });
     };
 
+    const sendMoveRow = (fromIndex: number, toIndex: number) => {
+        adapterRef.current?.send({ type: 'MOVE_ROW', fromIndex, toIndex });
+    };
+
     const sendUpdateDisplay = (field: string, value: number | string) => {
         adapterRef.current?.send({ type: 'UPDATE_DISPLAY', field, value });
     };
@@ -89,6 +94,7 @@ export function useRemoteClient(peerId: string | null): RemoteClientHook {
         sendUpdateRow,
         sendAddRow,
         sendDeleteRow,
+        sendMoveRow,
         sendUpdateDisplay,
     };
 }
