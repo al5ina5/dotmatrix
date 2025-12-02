@@ -1,4 +1,5 @@
 import { LEDPlugin } from './types';
+import { withPluginErrorHandling } from '@/lib/pluginHelpers';
 
 interface RedditPluginParams {
     subreddit: string;
@@ -40,8 +41,9 @@ export const RedditPlugin: LEDPlugin<RedditPluginParams> = {
             max: 10,
         }
     ],
-    fetch: async (params) => {
-        try {
+    fetch: async (params) => withPluginErrorHandling(
+        'reddit',
+        async () => {
             const subreddit = params.subreddit || 'showerthoughts';
             const sortBy = params.sortBy || 'hot';
             const limit = params.limit || 3;
@@ -74,11 +76,8 @@ export const RedditPlugin: LEDPlugin<RedditPluginParams> = {
             });
             
             return postTitles.join(' | ');
-            
-        } catch (error) {
-            console.error('Error fetching Reddit data:', error);
-            return `📱 r/${params.subreddit || 'reddit'}: Loading...`;
-        }
-    }
+        },
+        `📱 r/${params.subreddit || 'reddit'}: Loading...`
+    )
 };
 

@@ -1,4 +1,5 @@
 import { LEDPlugin } from './types';
+import { withPluginErrorHandling } from '@/lib/pluginHelpers';
 
 interface CountdownPluginParams {
     eventName: string;
@@ -33,8 +34,9 @@ export const CountdownPlugin: LEDPlugin<CountdownPluginParams> = {
             defaultValue: false,
         }
     ],
-    fetch: async (params) => {
-        try {
+    fetch: async (params) => withPluginErrorHandling(
+        'countdown',
+        async () => {
             const eventName = params.eventName || 'Event';
             const targetDate = params.targetDate || '2026-01-01';
             const showTime = params.showTime ?? false;
@@ -75,11 +77,8 @@ export const CountdownPlugin: LEDPlugin<CountdownPluginParams> = {
             } else {
                 return `${eventName}: ${seconds}s`;
             }
-            
-        } catch (error) {
-            console.error('Error calculating countdown:', error);
-            return 'Countdown error';
-        }
-    }
+        },
+        'Countdown error'
+    )
 };
 

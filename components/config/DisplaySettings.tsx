@@ -11,7 +11,7 @@ export function DisplaySettings() {
         <div className="space-y-6">
             <p className="font-bold">Display Settings</p>
 
-            <div className="grid grid-cols-2 gap-6">
+            <div className="grid grid-cols-4 gap-6">
                 <Input
                     label="Dot Size"
                     type="number"
@@ -26,24 +26,24 @@ export function DisplaySettings() {
                     value={dotGap}
                     onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateDisplaySetting('dotGap', parseInt(e.target.value))}
                 />
+
+
+                <Input
+                    label="Row Spacing"
+                    type="number"
+                    id="rowSpacing"
+                    value={rowSpacing}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateDisplaySetting('rowSpacing', parseInt(e.target.value))}
+                />
+
+                <Input
+                    label="Page Interval (ms)"
+                    type="number"
+                    id="pageInterval"
+                    value={pageInterval}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateDisplaySetting('pageInterval', parseInt(e.target.value))}
+                />
             </div>
-
-
-            <Input
-                label="Row Spacing"
-                type="number"
-                id="rowSpacing"
-                value={rowSpacing}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateDisplaySetting('rowSpacing', parseInt(e.target.value))}
-            />
-
-            <Input
-                label="Page Interval (ms)"
-                type="number"
-                id="pageInterval"
-                value={pageInterval}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateDisplaySetting('pageInterval', parseInt(e.target.value))}
-            />
         </div>
     );
 }

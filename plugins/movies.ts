@@ -1,4 +1,5 @@
 import { LEDPlugin } from './types';
+import { withPluginErrorHandling } from '@/lib/pluginHelpers';
 
 interface MoviesParams {
     apiKey: string;
@@ -42,25 +43,26 @@ export const MoviesPlugin: LEDPlugin<MoviesParams> = {
             return '🎬 Movies: Add TMDB API key in settings (free at themoviedb.org)';
         }
 
-        try {
-            const response = await fetch(
-                `https://api.themoviedb.org/3/movie/upcoming?api_key=${apiKey}&language=en-US&page=1`
-            );
+        return withPluginErrorHandling(
+            'movies',
+            async () => {
+                const response = await fetch(
+                    `https://api.themoviedb.org/3/movie/upcoming?api_key=${apiKey}&language=en-US&page=1`
+                );
 
-            if (!response.ok) {
-                if (response.status === 401) {
-                    return '🎬 Movies: Invalid API key';
+                if (!response.ok) {
+                    if (response.status === 401) {
+                        return '🎬 Movies: Invalid API key';
+                    }
+                    throw new Error('Failed to fetch movies');
                 }
-                throw new Error('Failed to fetch movies');
-            }
 
-            const data = await response.json();
-            const titles = data.results.slice(0, limit).map((m: any) => m.title);
+                const data = await response.json();
+                const titles = data.results.slice(0, limit).map((m: any) => m.title);
 
-            return `🎬 ${titles.join(separator)}`;
-        } catch (error) {
-            console.error('Movies plugin error:', error);
-            return '🎬 Movies: Unable to load data';
-        }
+                return `🎬 ${titles.join(separator)}`;
+            },
+            '🎬 Movies: Unable to load data'
+        );
     }
 };

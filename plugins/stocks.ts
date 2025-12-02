@@ -1,4 +1,5 @@
 import { LEDPlugin } from './types';
+import { withPluginErrorHandling } from '@/lib/pluginHelpers';
 
 interface StocksPluginParams {
     apiKey: string;
@@ -27,8 +28,9 @@ export const StocksPlugin: LEDPlugin<StocksPluginParams> = {
             placeholder: 'AAPL, GOOGL, TSLA',
         }
     ],
-    fetch: async (params) => {
-        try {
+    fetch: async (params) => withPluginErrorHandling(
+        'stocks',
+        async () => {
             const { apiKey, symbols = ['AAPL', 'GOOGL', 'MSFT'] } = params;
 
             if (!apiKey) {
@@ -61,17 +63,10 @@ export const StocksPlugin: LEDPlugin<StocksPluginParams> = {
 
             const results = await Promise.all(stockPromises);
             return `📈 ${results.join(' | ')}`;
-
-        } catch (error) {
-            console.error('Error fetching stock data:', error);
-            if (error instanceof Error && error.message === 'Invalid API key') {
-                return '📈 Stocks: Invalid API key';
-            }
-            const symbolList = (params.symbols || []).join(', ');
-            return symbolList
-                ? `📈 ${symbolList}: Loading...`
-                : `📈 Stocks: Configure in settings`;
-        }
-    }
+        },
+        params.symbols?.length 
+            ? `📈 ${params.symbols.join(', ')}: Loading...`
+            : '📈 Stocks: Configure in settings'
+    )
 };
 

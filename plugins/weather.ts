@@ -1,4 +1,5 @@
 import { LEDPlugin } from './types';
+import { withPluginErrorHandling } from '@/lib/pluginHelpers';
 
 interface WeatherParams {
     zipCode?: string;
@@ -39,8 +40,9 @@ export const WeatherPlugin: LEDPlugin<WeatherParams> = {
         }
     ],
 
-    fetch: async ({ zipCode = '10001', countryCode = 'us', unit = 'F' }) => {
-        try {
+    fetch: async ({ zipCode = '10001', countryCode = 'us', unit = 'F' }) => withPluginErrorHandling(
+        'weather',
+        async () => {
             // 1. Get Lat/Long from Zip Code (No Key)
             const geoRes = await fetch(`https://api.zippopotam.us/${countryCode}/${zipCode}`);
             if (!geoRes.ok) throw new Error('Invalid Zip Code');
@@ -71,9 +73,7 @@ export const WeatherPlugin: LEDPlugin<WeatherParams> = {
             else if (code >= 95) condition = 'Storm';
 
             return `${temp}°${unit} ${condition} in ${city}!`;
-        } catch (error) {
-            console.error('Weather plugin error:', error);
-            return 'Weather Unavailable';
-        }
-    }
+        },
+        'Weather Unavailable'
+    )
 };

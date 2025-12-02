@@ -1,4 +1,5 @@
 import { LEDPlugin } from './types';
+import { withPluginErrorHandling } from '@/lib/pluginHelpers';
 
 interface SportsPluginParams {
     league: string;
@@ -33,8 +34,9 @@ export const SportsPlugin: LEDPlugin<SportsPluginParams> = {
             max: 10,
         }
     ],
-    fetch: async (params) => {
-        try {
+    fetch: async (params) => withPluginErrorHandling(
+        'sports',
+        async () => {
             const league = params.league || 'nfl';
             const limit = params.limit || 3;
 
@@ -82,11 +84,8 @@ export const SportsPlugin: LEDPlugin<SportsPluginParams> = {
             return gameStrings.length > 0
                 ? gameStrings.join(' | ')
                 : `No ${league.toUpperCase()} games available`;
-
-        } catch (error) {
-            console.error('Error fetching sports data:', error);
-            return `🏀 ${params.league?.toUpperCase() || 'Sports'}: Loading scores...`;
-        }
-    }
+        },
+        `🏀 ${params.league?.toUpperCase() || 'Sports'}: Loading scores...`
+    )
 };
 

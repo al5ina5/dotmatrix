@@ -1,4 +1,5 @@
 import { LEDPlugin } from './types';
+import { withPluginErrorHandling } from '@/lib/pluginHelpers';
 
 interface SunParams {
     lat: number;
@@ -11,13 +12,14 @@ export const SunPlugin: LEDPlugin<SunParams> = {
     description: 'Displays sunrise and sunset times',
     defaultInterval: 3600000, // 1 hour
 
-    fetch: async ({ lat, lng }) => {
-        try {
+    fetch: async ({ lat, lng }) => withPluginErrorHandling(
+        'sun',
+        async () => {
             const res = await fetch(`https://api.sunrise-sunset.org/json?lat=${lat}&lng=${lng}&formatted=0`);
-            if (!res.ok) return 'Sun Data Error';
+            if (!res.ok) throw new Error('Failed to fetch sunrise/sunset data');
             const data = await res.json();
 
-            if (data.status !== 'OK') return 'Sun Data Error';
+            if (data.status !== 'OK') throw new Error('Invalid sunrise/sunset data');
 
             const formatTime = (isoStr: string) => {
                 const date = new Date(isoStr);
@@ -28,8 +30,7 @@ export const SunPlugin: LEDPlugin<SunParams> = {
             const sunset = formatTime(data.results.sunset);
 
             return `SUNRISE: ${sunrise}   SUNSET: ${sunset}`;
-        } catch (e) {
-            return 'Sun Data Error';
-        }
-    }
+        },
+        'Sun Data Error'
+    )
 };

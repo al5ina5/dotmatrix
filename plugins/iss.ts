@@ -1,4 +1,5 @@
 import { LEDPlugin } from './types';
+import { withPluginErrorHandling } from '@/lib/pluginHelpers';
 
 export const ISSPlugin: LEDPlugin = {
     id: 'iss',
@@ -6,10 +7,11 @@ export const ISSPlugin: LEDPlugin = {
     description: 'Tracks the International Space Station',
     defaultInterval: 10000, // 10 sec
 
-    fetch: async () => {
-        try {
+    fetch: async () => withPluginErrorHandling(
+        'iss',
+        async () => {
             const res = await fetch('https://api.wheretheiss.at/v1/satellites/25544');
-            if (!res.ok) return 'ISS: Signal Lost';
+            if (!res.ok) throw new Error('Failed to track ISS');
             const data = await res.json();
 
             // Reverse geocoding would be cool but requires keys usually.
@@ -19,8 +21,7 @@ export const ISSPlugin: LEDPlugin = {
             const speed = Math.round(data.velocity).toLocaleString();
 
             return `ISS LOCATION: ${lat}, ${lon}  SPEED: ${speed} km/h`;
-        } catch (e) {
-            return 'ISS: Offline';
-        }
-    }
+        },
+        'ISS: Signal Lost'
+    )
 };

@@ -1,4 +1,5 @@
 import { LEDPlugin } from './types';
+import { withPluginErrorHandling } from '@/lib/pluginHelpers';
 
 interface CustomAPIPluginParams {
     url: string;
@@ -48,66 +49,66 @@ export const CustomAPIPlugin: LEDPlugin<CustomAPIPluginParams> = {
         },
     ],
     fetch: async (params) => {
-        try {
-            const url = params.url;
-            if (!url) {
-                return 'Please configure API URL';
-            }
-            
-            const method = params.method || 'GET';
-            const headersStr = params.headers || '{}';
-            
-            let headers: Record<string, string> = {};
-            try {
-                headers = JSON.parse(headersStr);
-            } catch (e) {
-                console.warn('Invalid headers JSON, using empty headers');
-            }
-            
-            const response = await fetch(url, {
-                method,
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...headers
+        const url = params.url;
+        if (!url) {
+            return 'Please configure API URL';
+        }
+
+        return withPluginErrorHandling(
+            'customapi',
+            async () => {
+                const method = params.method || 'GET';
+                const headersStr = params.headers || '{}';
+                
+                let headers: Record<string, string> = {};
+                try {
+                    headers = JSON.parse(headersStr);
+                } catch (e) {
+                    console.warn('Invalid headers JSON, using empty headers');
                 }
-            });
-            
-            if (!response.ok) {
-                throw new Error(`API returned ${response.status}`);
-            }
-            
-            const data = await response.json();
-            
-            // If jsonPath is provided, try to extract that value
-            if (params.jsonPath) {
-                const value = extractValueByPath(data, params.jsonPath);
-                if (value !== undefined && value !== null) {
-                    return typeof value === 'object' ? JSON.stringify(value) : String(value);
+                
+                const response = await fetch(url, {
+                    method,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...headers
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`API returned ${response.status}`);
                 }
-            }
-            
-            // Otherwise, try to intelligently format the response
-            if (typeof data === 'string') {
-                return data;
-            } else if (typeof data === 'object') {
-                // Look for common message fields
-                const messageFields = ['message', 'text', 'content', 'data', 'result', 'value'];
-                for (const field of messageFields) {
-                    if (data[field]) {
-                        const value = data[field];
+                
+                const data = await response.json();
+                
+                // If jsonPath is provided, try to extract that value
+                if (params.jsonPath) {
+                    const value = extractValueByPath(data, params.jsonPath);
+                    if (value !== undefined && value !== null) {
                         return typeof value === 'object' ? JSON.stringify(value) : String(value);
                     }
                 }
-                // Fallback: stringify the whole object
-                return JSON.stringify(data);
-            }
-            
-            return String(data);
-            
-        } catch (error) {
-            console.error('Error fetching custom API:', error);
-            return `🔌 API: Configure your endpoint in settings`;
-        }
+                
+                // Otherwise, try to intelligently format the response
+                if (typeof data === 'string') {
+                    return data;
+                } else if (typeof data === 'object') {
+                    // Look for common message fields
+                    const messageFields = ['message', 'text', 'content', 'data', 'result', 'value'];
+                    for (const field of messageFields) {
+                        if (data[field]) {
+                            const value = data[field];
+                            return typeof value === 'object' ? JSON.stringify(value) : String(value);
+                        }
+                    }
+                    // Fallback: stringify the whole object
+                    return JSON.stringify(data);
+                }
+                
+                return String(data);
+            },
+            '🔌 API: Configure your endpoint in settings'
+        );
     }
 };
 

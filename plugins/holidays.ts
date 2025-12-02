@@ -1,4 +1,5 @@
 import { LEDPlugin } from './types';
+import { withPluginErrorHandling } from '@/lib/pluginHelpers';
 
 interface HolidayParams {
     countryCode: string; // e.g. 'US'
@@ -10,11 +11,12 @@ export const HolidaysPlugin: LEDPlugin<HolidayParams> = {
     description: 'Upcoming public holidays',
     defaultInterval: 86400000, // 24 hours
 
-    fetch: async ({ countryCode = 'US' }) => {
-        try {
+    fetch: async ({ countryCode = 'US' }) => withPluginErrorHandling(
+        'holidays',
+        async () => {
             const year = new Date().getFullYear();
             const res = await fetch(`https://date.nager.at/api/v3/PublicHolidays/${year}/${countryCode}`);
-            if (!res.ok) return 'Holiday Error';
+            if (!res.ok) throw new Error('Failed to fetch holidays');
             const holidays = await res.json();
 
             // Find next upcoming holiday
@@ -27,8 +29,7 @@ export const HolidaysPlugin: LEDPlugin<HolidayParams> = {
             const date = new Date(next.date).toLocaleDateString();
 
             return `NEXT HOLIDAY: ${next.name} (${date})`;
-        } catch (e) {
-            return 'Holiday Error';
-        }
-    }
+        },
+        'Holiday Error'
+    )
 };

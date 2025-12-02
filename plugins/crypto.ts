@@ -1,4 +1,5 @@
 import { LEDPlugin } from './types';
+import { withPluginErrorHandling } from '@/lib/pluginHelpers';
 
 interface CryptoParams {
     coins: string[];  // CoinGecko IDs (e.g., 'bitcoin', 'ethereum', 'sonic-3')
@@ -31,8 +32,9 @@ export const CryptoPlugin: LEDPlugin<CryptoParams> = {
         }
     ],
 
-    fetch: async ({ coins, currency = 'usd' }) => {
-        try {
+    fetch: async ({ coins, currency = 'usd' }) => withPluginErrorHandling(
+        'crypto',
+        async () => {
             if (!coins || coins.length === 0) return 'No coins configured';
 
             // Common coin ID to symbol mapping
@@ -106,11 +108,9 @@ export const CryptoPlugin: LEDPlugin<CryptoParams> = {
             }
 
             return segments;
-        } catch (error) {
-            console.error('Crypto plugin error:', error);
-            // Return friendlier message with the coins they're trying to track
-            const coinList = coins?.map(c => c.toUpperCase().slice(0, 3)).join(', ') || 'crypto';
-            return `💰 ${coinList}: Fetching prices...`;
-        }
-    }
+        },
+        coins?.map(c => c.toUpperCase().slice(0, 3)).join(', ')
+            ? `💰 ${coins.map(c => c.toUpperCase().slice(0, 3)).join(', ')}: Fetching prices...`
+            : '💰 Crypto: Fetching prices...'
+    )
 };

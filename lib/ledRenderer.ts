@@ -159,3 +159,4 @@ export function isPixelActive(
     return { active: false, colorIndex: -1 };
 }
 
+

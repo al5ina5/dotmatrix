@@ -1,4 +1,5 @@
 import { LEDPlugin } from './types';
+import { withPluginErrorHandling } from '@/lib/pluginHelpers';
 
 interface WorldClockParams {
     timezones: { label: string; region: string }[]; // e.g. [{label: 'NYC', region: 'America/New_York'}]
@@ -11,8 +12,9 @@ export const WorldClockPlugin: LEDPlugin<WorldClockParams> = {
     description: 'Displays time for multiple timezones',
     defaultInterval: 60000, // 1 min update
 
-    fetch: async ({ timezones, format = '24h' }) => {
-        try {
+    fetch: async ({ timezones, format = '24h' }) => withPluginErrorHandling(
+        'worldclock',
+        async () => {
             const parts = await Promise.all(timezones.map(async (tz) => {
                 const res = await fetch(`http://worldtimeapi.org/api/timezone/${tz.region}`);
                 if (!res.ok) return `${tz.label}: Err`;
@@ -35,8 +37,7 @@ export const WorldClockPlugin: LEDPlugin<WorldClockParams> = {
             }));
 
             return parts.join('   ');
-        } catch (e) {
-            return 'World Clock Error';
-        }
-    }
+        },
+        'World Clock Error'
+    )
 };

@@ -1,4 +1,5 @@
 import { LEDPlugin } from './types';
+import { withPluginErrorHandling } from '@/lib/pluginHelpers';
 
 export const HackerNewsPlugin: LEDPlugin = {
     id: 'hackernews',
@@ -6,11 +7,12 @@ export const HackerNewsPlugin: LEDPlugin = {
     description: 'Top stories from Hacker News',
     defaultInterval: 300000, // 5 mins
 
-    fetch: async () => {
-        try {
+    fetch: async () => withPluginErrorHandling(
+        'hackernews',
+        async () => {
             // 1. Get top story IDs
             const topRes = await fetch('https://hacker-news.firebaseio.com/v0/topstories.json');
-            if (!topRes.ok) return 'HN Error';
+            if (!topRes.ok) throw new Error('Failed to fetch top stories');
             const topIds = await topRes.json();
 
             // 2. Get details for top 5
@@ -21,8 +23,7 @@ export const HackerNewsPlugin: LEDPlugin = {
             }));
 
             return `HN TOP 5: ${stories.join('   •   ')}`;
-        } catch (e) {
-            return 'HN Error';
-        }
-    }
+        },
+        'HN: Unable to load stories'
+    )
 };

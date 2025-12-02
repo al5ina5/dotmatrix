@@ -5,6 +5,8 @@ import { LED_CONFIG, LEDRowConfig } from '@/config/led.config';
 import { PLUGIN_REGISTRY } from '@/plugins/registry';
 import { useRemoteClient } from '@/hooks/useRemoteClient';
 import { RemoteConnectionState } from '@/lib/remoteControl';
+import { useLocalStorage } from '@/hooks/useLocalStorage';
+import { DisplaySettings, StoredConfig } from '@/types/config';
 
 interface ConfigContextType {
     // Rows
@@ -33,56 +35,35 @@ export const ConfigContext = createContext<ConfigContextType | undefined>(undefi
 
 const STORAGE_KEY = 'led-config';
 
-// Helper to load from localStorage
-function loadFromStorage() {
-    if (typeof window === 'undefined') return null;
+/**
+ * Validation function for stored config data
+ * Cleans up and migrates data from older versions
+ */
+function validateStoredConfig(data: any): StoredConfig | null {
+    if (!data || typeof data !== 'object') {
+        return null;
+    }
 
-    try {
-        const stored = localStorage.getItem(STORAGE_KEY);
-        if (stored) {
-            const parsed = JSON.parse(stored);
-
-            // Validate and clean up rows data
-            if (parsed.rows && Array.isArray(parsed.rows)) {
-                parsed.rows = parsed.rows.map((row: any) => {
-                    // Clean up crypto plugin params if they have object arrays
-                    if (row.pluginId === 'crypto' && row.params?.coins) {
-                        if (Array.isArray(row.params.coins)) {
-                            row.params.coins = row.params.coins.map((coin: any) => {
-                                // If it's an object, extract the ID
-                                if (typeof coin === 'object' && coin !== null) {
-                                    return coin.id || coin.symbol || String(coin);
-                                }
-                                return String(coin);
-                            });
+    // Validate and clean up rows data
+    if (data.rows && Array.isArray(data.rows)) {
+        data.rows = data.rows.map((row: any) => {
+            // Clean up crypto plugin params if they have object arrays
+            if (row.pluginId === 'crypto' && row.params?.coins) {
+                if (Array.isArray(row.params.coins)) {
+                    row.params.coins = row.params.coins.map((coin: any) => {
+                        // If it's an object, extract the ID
+                        if (typeof coin === 'object' && coin !== null) {
+                            return coin.id || coin.symbol || String(coin);
                         }
-                    }
-                    return row;
-                });
+                        return String(coin);
+                    });
+                }
             }
-
-            return parsed;
-        }
-    } catch (error) {
-        console.error('Error loading config from localStorage:', error);
-        // Clear corrupted data
-        localStorage.removeItem(STORAGE_KEY);
+            return row;
+        });
     }
-    return null;
-}
 
-// Helper to save to localStorage
-function saveToStorage(rows: LEDRowConfig[], displaySettings: any) {
-    if (typeof window === 'undefined') return;
-
-    try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify({
-            rows,
-            displaySettings
-        }));
-    } catch (error) {
-        console.error('Error saving config to localStorage:', error);
-    }
+    return data as StoredConfig;
 }
 
 interface ConfigProviderProps {
@@ -98,22 +79,42 @@ export function ConfigProvider({
     remotePeerId = null,
     onRemoteConnectionStateChange
 }: ConfigProviderProps) {
-    // LOCAL STATE: Initialize from localStorage or defaults
-    const [rows, setRows] = useState<LEDRowConfig[]>(() => {
-        const stored = loadFromStorage();
-        return stored?.rows || [...LED_CONFIG.rows];
-    });
-
-    const [displaySettings, setDisplaySettings] = useState(() => {
-        const stored = loadFromStorage();
-        return stored?.displaySettings || {
+    // Default configuration values
+    const defaultConfig: StoredConfig = {
+        rows: [...LED_CONFIG.rows],
+        displaySettings: {
             dotSize: LED_CONFIG.display.dotSize,
             dotGap: LED_CONFIG.display.dotGap,
             dotColor: LED_CONFIG.display.dotColor,
             rowSpacing: LED_CONFIG.layout.rowSpacing,
             pageInterval: LED_CONFIG.layout.pageInterval,
-        };
-    });
+        }
+    };
+
+    // LOCAL STATE: Managed with useLocalStorage hook
+    const [localConfig, setLocalConfig] = useLocalStorage<StoredConfig>(
+        STORAGE_KEY,
+        defaultConfig,
+        validateStoredConfig
+    );
+
+    // Separate rows and displaySettings for backward compatibility
+    const rows = localConfig.rows;
+    const displaySettings = localConfig.displaySettings;
+
+    const setRows = useCallback((updater: LEDRowConfig[] | ((prev: LEDRowConfig[]) => LEDRowConfig[])) => {
+        setLocalConfig(prev => ({
+            ...prev,
+            rows: typeof updater === 'function' ? updater(prev.rows) : updater
+        }));
+    }, [setLocalConfig]);
+
+    const setDisplaySettings = useCallback((updater: DisplaySettings | ((prev: DisplaySettings) => DisplaySettings)) => {
+        setLocalConfig(prev => ({
+            ...prev,
+            displaySettings: typeof updater === 'function' ? updater(prev.displaySettings) : updater
+        }));
+    }, [setLocalConfig]);
 
     // REMOTE STATE: Connect to remote host when in remote mode
     const {
@@ -132,13 +133,6 @@ export function ConfigProvider({
             onRemoteConnectionStateChange(connectionState);
         }
     }, [connectionState, mode, onRemoteConnectionStateChange]);
-
-    // Save to localStorage whenever LOCAL rows or displaySettings change (not in remote mode)
-    useEffect(() => {
-        if (mode === 'local') {
-            saveToStorage(rows, displaySettings);
-        }
-    }, [rows, displaySettings, mode]);
 
     // ACTION HANDLERS: Switch between local and remote based on mode
     const addRow = useCallback(() => {
@@ -193,24 +187,17 @@ export function ConfigProvider({
         if (mode === 'remote') {
             sendUpdateDisplay(field, value);
         } else {
-            setDisplaySettings((prev: any) => ({ ...prev, [field]: value }));
+            setDisplaySettings((prev: DisplaySettings) => ({ ...prev, [field]: value }));
         }
-    }, [mode, sendUpdateDisplay]);
+    }, [mode, sendUpdateDisplay, setDisplaySettings]);
 
     const resetToDefaults = useCallback(() => {
         if (mode === 'remote') {
             console.warn('Cannot reset remote defaults');
         } else {
-            setRows([...LED_CONFIG.rows]);
-            setDisplaySettings({
-                dotSize: LED_CONFIG.display.dotSize,
-                dotGap: LED_CONFIG.display.dotGap,
-                dotColor: LED_CONFIG.display.dotColor,
-                rowSpacing: LED_CONFIG.layout.rowSpacing,
-                pageInterval: LED_CONFIG.layout.pageInterval,
-            });
+            setLocalConfig(defaultConfig);
         }
-    }, [mode]);
+    }, [mode, setLocalConfig, defaultConfig]);
 
     const addAllPlugins = useCallback(() => {
         if (mode === 'remote') {

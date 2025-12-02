@@ -76,7 +76,10 @@ export function Settings({
 
     return (
         <Portal>
-            <div className="fixed inset-0 bg-black/95 text-white font-mono z-50 overflow-auto">
+            <div
+                className="fixed inset-0 bg-black/95 text-white font-mono z-100 overflow-auto"
+                onClick={onClose}
+            >
                 <button
                     onClick={onClose}
                     className="fixed top-6 right-6 w-10 h-10 flex items-center justify-center text-white/70 hover:text-white hover:bg-white/10 rounded-full transition-all z-50"
@@ -88,7 +91,10 @@ export function Settings({
                     </svg>
                 </button>
 
-                <div className="max-w-2xl mx-auto space-y-12 p-6 py-12">
+                <div
+                    className="max-w-2xl mx-auto space-y-12 p-6 py-12"
+                    onClick={(e) => e.stopPropagation()}
+                >
                     {/* Header */}
                     <div className="flex items-center justify-between">
                         <div>
@@ -96,7 +102,7 @@ export function Settings({
                             <p className="opacity-70">Manage your LED display settings.</p>
                         </div>
 
-                        {!currentRemoteId && (
+                        {/* {!currentRemoteId && (
                             <div className="flex gap-4 items-center">
                                 <button
                                     onClick={handleClearCache}
@@ -111,7 +117,7 @@ export function Settings({
                                     Reset to Defaults
                                 </button>
                             </div>
-                        )}
+                        )} */}
                     </div>
 
                     {/* Remote Connection UI */}
@@ -162,9 +168,6 @@ export function Settings({
                         </>
                     )}
 
-                    <div className="mt-12 pt-6 border-t border-white/10 text-center text-sm text-white/50">
-                        <p>💡 <strong>Tip:</strong> Double-click display to toggle settings • Long-press for 800ms to open settings</p>
-                    </div>
                 </div>
             </div>
         </Portal>

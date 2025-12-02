@@ -86,3 +86,4 @@ Render pixel with charColors[colorIndex]
 ✅ **Multi-color support** works everywhere
 📦 **Cleaner, more maintainable codebase**
 
+

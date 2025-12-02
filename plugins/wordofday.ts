@@ -1,4 +1,5 @@
 import { LEDPlugin } from './types';
+import { withPluginErrorHandling } from '@/lib/pluginHelpers';
 
 interface WordOfDayPluginParams {
     showDefinition?: boolean;
@@ -17,8 +18,9 @@ export const WordOfDayPlugin: LEDPlugin<WordOfDayPluginParams> = {
             defaultValue: true,
         }
     ],
-    fetch: async (params) => {
-        try {
+    fetch: async (params) => withPluginErrorHandling(
+        'wordofday',
+        async () => {
             const showDefinition = params.showDefinition ?? true;
             
             // Random Word API (free, no key required)
@@ -58,14 +60,12 @@ export const WordOfDayPlugin: LEDPlugin<WordOfDayPluginParams> = {
             
             // Fallback: just the word
             return `Word of the Day: ${word.toUpperCase()}`;
-            
-        } catch (error) {
-            console.error('Error fetching word of the day:', error);
-            // Return a fun fallback word
+        },
+        (() => {
             const fallbackWords = ['SERENDIPITY', 'EPHEMERAL', 'LUMINOUS', 'RESILIENT', 'WANDERLUST'];
             const randomWord = fallbackWords[Math.floor(Math.random() * fallbackWords.length)];
             return `📚 Word: ${randomWord}`;
-        }
-    }
+        })()
+    )
 };
 

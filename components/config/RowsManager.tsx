@@ -28,13 +28,13 @@ export function RowsManager() {
             <div className="flex items-center justify-between gap-2">
                 <p className="font-bold">Rows ({rows.length})</p>
                 <div className="flex gap-2">
-                    <button
+                    {/* <button
                         onClick={addAllPlugins}
                         className="bg-purple-600/80 hover:bg-purple-600 text-white px-3 py-1.5 rounded-md text-sm transition-colors font-bold"
                         title="Add all plugins at once for testing"
                     >
                         🧪 Test All Plugins
-                    </button>
+                    </button> */}
                     <button
                         onClick={addRow}
                         className="bg-white/20 hover:bg-white/30 text-white px-3 py-1.5 rounded-md text-sm transition-colors"
