@@ -16,7 +16,16 @@ interface CanvasLEDTickerProps {
     inactiveLEDOpacity?: number; // 0-50, representing 0-50% opacity
     inactiveLEDColor?: string; // Hex color string for inactive LEDs
     speedMultiplier?: number; // Animation speed multiplier (0.25x to 4x, 1.0 = normal)
+    filters?: {
+        vcrCurve: boolean;
+        scanlines: boolean;
+        glitch: boolean;
+        rgbShift: boolean;
+        vignette: boolean;
+    };
 }
+
+import { vertexShaderSource, fragmentShaderSource } from '@/lib/shaders';
 
 export default function CanvasLEDTicker({
     rows,
@@ -29,16 +38,27 @@ export default function CanvasLEDTicker({
     inactiveLEDOpacity = 8,
     inactiveLEDColor,
     speedMultiplier = 1.0,
+    filters = {
+        vcrCurve: false,
+        scanlines: false,
+        glitch: false,
+        rgbShift: false,
+        vignette: false,
+    },
 }: CanvasLEDTickerProps) {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const containerRef = useRef<HTMLDivElement>(null);
+    const offscreenCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
     // Use refs for mutable state to avoid re-triggering the effect loop
     const rowsRef = useRef(rows);
     rowsRef.current = rows;
-    
+
     const speedMultiplierRef = useRef(speedMultiplier);
     speedMultiplierRef.current = speedMultiplier;
+
+    const filtersRef = useRef(filters);
+    filtersRef.current = filters;
 
     // Pagination State
     const [currentPage, setCurrentPage] = useState(0);
@@ -53,11 +73,16 @@ export default function CanvasLEDTicker({
         [key: number]: {
             offset: number;
             lastTick: number;
+            displayedContent: any; // Current content being displayed
+            pendingContent: any | null; // New content waiting to be displayed
+            cyclesCompleted: number; // Number of complete scroll cycles since pending content arrived
+            lastOffset: number; // Previous offset to detect wrap-around
+            totalWidth: number; // Total width of current displayed content (for cycle detection)
         }
     }>({});
-    
+
     const prevSpeedMultiplierRef = useRef(speedMultiplier);
-    
+
     // Reset animation timing when speed multiplier changes to apply immediately
     useEffect(() => {
         if (prevSpeedMultiplierRef.current !== speedMultiplier) {
@@ -74,19 +99,110 @@ export default function CanvasLEDTicker({
         const container = containerRef.current;
         if (!canvas || !container) return;
 
-        const ctx = canvas.getContext('2d', { alpha: false }); // Optimize for no transparency on canvas itself
+        // Initialize WebGL
+        const gl = canvas.getContext('webgl');
+        if (!gl) {
+            console.error('WebGL not supported');
+            return;
+        }
+
+        // Initialize Offscreen Canvas for 2D drawing
+        if (!offscreenCanvasRef.current) {
+            offscreenCanvasRef.current = document.createElement('canvas');
+        }
+        const offscreenCanvas = offscreenCanvasRef.current;
+        const ctx = offscreenCanvas.getContext('2d', { alpha: false });
         if (!ctx) return;
+
+        // --- WebGL Setup ---
+        const createShader = (gl: WebGLRenderingContext, type: number, source: string) => {
+            const shader = gl.createShader(type);
+            if (!shader) return null;
+            gl.shaderSource(shader, source);
+            gl.compileShader(shader);
+            if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+                console.error(gl.getShaderInfoLog(shader));
+                gl.deleteShader(shader);
+                return null;
+            }
+            return shader;
+        };
+
+        const createProgram = (gl: WebGLRenderingContext, vertexShader: WebGLShader, fragmentShader: WebGLShader) => {
+            const program = gl.createProgram();
+            if (!program) return null;
+            gl.attachShader(program, vertexShader);
+            gl.attachShader(program, fragmentShader);
+            gl.linkProgram(program);
+            if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+                console.error(gl.getProgramInfoLog(program));
+                gl.deleteProgram(program);
+                return null;
+            }
+            return program;
+        };
+
+        const vertexShader = createShader(gl, gl.VERTEX_SHADER, vertexShaderSource);
+        const fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, fragmentShaderSource);
+        if (!vertexShader || !fragmentShader) return;
+
+        const program = createProgram(gl, vertexShader, fragmentShader);
+        if (!program) return;
+
+        const positionLocation = gl.getAttribLocation(program, 'a_position');
+        const texCoordLocation = gl.getAttribLocation(program, 'a_texCoord');
+
+        const positionBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+            -1, -1,
+            1, -1,
+            -1, 1,
+            -1, 1,
+            1, -1,
+            1, 1,
+        ]), gl.STATIC_DRAW);
+
+        const texCoordBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, texCoordBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+            0, 1,
+            1, 1,
+            0, 0,
+            0, 0,
+            1, 1,
+            1, 0,
+        ]), gl.STATIC_DRAW);
+
+        const texture = gl.createTexture();
+        gl.bindTexture(gl.TEXTURE_2D, texture);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+
+        // Uniform Locations
+        const uTimeLoc = gl.getUniformLocation(program, 'u_time');
+        const uVcrCurveLoc = gl.getUniformLocation(program, 'u_vcrCurve');
+        const uScanlinesLoc = gl.getUniformLocation(program, 'u_scanlines');
+        const uGlitchLoc = gl.getUniformLocation(program, 'u_glitch');
+        const uRgbShiftLoc = gl.getUniformLocation(program, 'u_rgbShift');
+        const uVignetteLoc = gl.getUniformLocation(program, 'u_vignette');
 
         let animationFrameId: number;
 
         // Resize handler
         const handleResize = () => {
-            // Set actual canvas size to match display size for sharp rendering
             const dpr = window.devicePixelRatio || 1;
+
+            // Resize main canvas (WebGL)
             canvas.width = window.innerWidth * dpr;
             canvas.height = window.innerHeight * dpr;
+            gl.viewport(0, 0, canvas.width, canvas.height);
 
-            // Scale context to match dpr
+            // Resize offscreen canvas (2D)
+            offscreenCanvas.width = window.innerWidth * dpr;
+            offscreenCanvas.height = window.innerHeight * dpr;
             ctx.scale(dpr, dpr);
 
             // Set CSS size
@@ -119,14 +235,12 @@ export default function CanvasLEDTicker({
         // --- RENDER LOOP ---
         const render = (timestamp: number) => {
             // --- Page Switching Logic ---
-            // Only switch pages if we actually have more content than fits on one screen
             if (pageStateRef.current.totalPages > 1) {
                 if (timestamp - pageStateRef.current.lastPageSwitch > pageInterval) {
                     pageStateRef.current.currentPage = (pageStateRef.current.currentPage + 1) % pageStateRef.current.totalPages;
                     pageStateRef.current.lastPageSwitch = timestamp;
                 }
             } else {
-                // Force page 0 if everything fits
                 if (pageStateRef.current.currentPage !== 0) {
                     pageStateRef.current.currentPage = 0;
                 }
@@ -139,86 +253,125 @@ export default function CanvasLEDTicker({
             const cols = Math.ceil(width / pitch);
             const totalRows = Math.ceil(height / pitch);
 
-            // Clear screen
+            // --- DRAW TO OFFSCREEN CANVAS (2D) ---
             ctx.fillStyle = '#000000';
             ctx.fillRect(0, 0, width, height);
 
-            // --- 1. Calculate Layout for Current Page ---
+            // 1. Calculate Layout for Current Page
             const { rowsPerPage, currentPage } = pageStateRef.current;
             const textRowHeight = 7;
             const rowsPerBlock = textRowHeight + rowSpacing;
 
-            // Get rows for this page
             const startIndex = currentPage * rowsPerPage;
             const endIndex = Math.min(startIndex + rowsPerPage, rowsRef.current.length);
             const visibleRows = rowsRef.current.slice(startIndex, endIndex);
 
-            // Calculate visual height (excluding last margin)
             const visualContentRowsInDots = (visibleRows.length * textRowHeight) + (Math.max(0, visibleRows.length - 1) * rowSpacing);
             const unusedRows = totalRows - visualContentRowsInDots;
             const startGridRow = Math.floor(unusedRows / 2);
 
-            // --- 2. Draw Background Grid ---
-            // We draw all dots as "dimmed" first using the inactive LED color
+            // 2. Draw Background Grid
             const baseColor = typeof dotColor === 'string' ? dotColor : '#00ff00';
             const inactiveColor = inactiveLEDColor || baseColor;
             const rgb = hexToRgb(inactiveColor);
-            const opacity = inactiveLEDOpacity / 100; // Convert 0-50 to 0.0-0.5
+            const opacity = inactiveLEDOpacity / 100;
             const dimStyle = rgb ? `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${opacity})` : '#111';
 
             ctx.fillStyle = dimStyle;
-
-            // Optimization: Draw circles is expensive.
-            // For 20k dots, drawing rects is much faster and looks similar at small sizes.
-            // If dotSize > 4, we can try circles, but rects are safer for Pi.
-            // Let's stick to rects for raw performance, or rounded rects if possible.
-            // Actually, let's do circles but optimized.
-            // Better yet: Path2D?
-            // Fastest: fillRect. Let's use fillRect for the "pixels".
-            // Real LED screens often look like square pixels anyway.
-
             for (let r = 0; r < totalRows; r++) {
                 for (let c = 0; c < cols; c++) {
                     ctx.fillRect(c * pitch, r * pitch, dotSize, dotSize);
                 }
             }
 
-            // --- 3. Draw Active Rows ---
+            // 3. Draw Active Rows
             visibleRows.forEach((rowConfig, i) => {
-                // Original index is crucial for state persistence
                 const originalIndex = startIndex + i;
 
-                // Initialize state if needed
                 if (!stateRef.current[originalIndex]) {
-                    stateRef.current[originalIndex] = { offset: 0, lastTick: timestamp };
+                    stateRef.current[originalIndex] = {
+                        offset: 0,
+                        lastTick: timestamp,
+                        displayedContent: rowConfig.content,
+                        pendingContent: null,
+                        cyclesCompleted: 0,
+                        lastOffset: 0,
+                        totalWidth: 0
+                    };
                 }
                 const state = stateRef.current[originalIndex];
 
-                // Update Animation State
-                if (rowConfig.scrolling !== false && !document.hidden) {
-                    // Apply speed multiplier: lower multiplier = faster animation
-                    const adjustedStepInterval = rowConfig.stepInterval / speedMultiplierRef.current;
-                    if (timestamp - state.lastTick > adjustedStepInterval) {
-                        state.offset++;
-                        state.lastTick = timestamp;
+                // Check if content has changed
+                const contentChanged = state.displayedContent !== rowConfig.content;
+                if (contentChanged) {
+                    // New content arrived - store it as pending (always use latest)
+                    // If there was already pending content, replace it with the newer one
+                    if (!state.pendingContent) {
+                        // First pending content - reset cycle counter
+                        state.cyclesCompleted = 0;
                     }
-                } else {
-                    // If paused/hidden, update lastTick so we don't jump when resuming
-                    state.lastTick = timestamp;
+                    state.pendingContent = rowConfig.content;
                 }
 
-                // Calculate Row Position
-                const gridRowStart = startGridRow + (i * rowsPerBlock);
+                // Use displayed content for rendering (not the new content)
+                const contentToRender = state.displayedContent;
 
-                // Prepare Content using shared rendering logic
+                const gridRowStart = startGridRow + (i * rowsPerBlock);
                 const rowColor = rowConfig.color || baseColor;
                 const spacing = rowConfig.spacing;
-                const prepared = prepareContent(rowConfig.content, rowColor, spacing);
-
-                // Draw the 7 rows of this text block using shared rendering logic
+                const prepared = prepareContent(contentToRender, rowColor, spacing);
                 const alignment = rowConfig.alignment || 'left';
                 const scrolling = rowConfig.scrolling !== false;
-                
+
+                // Update totalWidth for current displayed content
+                // This is used for cycle detection
+                if (state.totalWidth !== prepared.totalWidth) {
+                    state.totalWidth = prepared.totalWidth;
+                }
+
+                if (rowConfig.scrolling !== false && !document.hidden) {
+                    const adjustedStepInterval = rowConfig.stepInterval / speedMultiplierRef.current;
+                    if (timestamp - state.lastTick > adjustedStepInterval) {
+                        const prevOffset = state.offset;
+                        state.offset++;
+                        state.lastTick = timestamp;
+
+                        // Detect cycle completion: a cycle is complete when offset >= totalWidth
+                        // Since offset increments continuously, we detect when it crosses the totalWidth boundary
+                        if (state.pendingContent && state.totalWidth > 0) {
+                            // Check if we've completed a full cycle (offset crossed totalWidth boundary)
+                            const prevCycle = Math.floor(prevOffset / state.totalWidth);
+                            const currentCycle = Math.floor(state.offset / state.totalWidth);
+
+                            if (currentCycle > prevCycle) {
+                                // Completed a cycle
+                                state.cyclesCompleted++;
+
+                                // After 2-3 cycles, switch to pending content (using 3 for safety)
+                                if (state.cyclesCompleted >= 3) {
+                                    state.displayedContent = state.pendingContent;
+                                    state.pendingContent = null;
+                                    state.cyclesCompleted = 0;
+                                    // Reset offset to 0 for new content (start from beginning)
+                                    state.offset = 0;
+                                    // totalWidth will be recalculated on next frame with new content
+                                    state.totalWidth = 0;
+                                }
+                            }
+                        }
+
+                        state.lastOffset = prevOffset;
+                    }
+                } else {
+                    state.lastTick = timestamp;
+                    // For non-scrolling rows, update content immediately if changed
+                    if (contentChanged) {
+                        state.displayedContent = rowConfig.content;
+                        state.pendingContent = null;
+                        state.cyclesCompleted = 0;
+                    }
+                }
+
                 for (let r = 0; r < 7; r++) {
                     const screenRow = gridRowStart + r;
                     if (screenRow < 0 || screenRow >= totalRows) continue;
@@ -236,22 +389,47 @@ export default function CanvasLEDTicker({
                         );
 
                         if (active && colorIndex >= 0) {
-                            // Apply brightness to color
                             const brightnessFactor = brightness / 100;
                             const pixelColor = prepared.charColors[colorIndex];
                             const rgb = hexToRgb(pixelColor);
-                            
+
                             if (rgb) {
                                 ctx.fillStyle = `rgb(${Math.floor(rgb.r * brightnessFactor)}, ${Math.floor(rgb.g * brightnessFactor)}, ${Math.floor(rgb.b * brightnessFactor)})`;
                             } else {
                                 ctx.fillStyle = pixelColor;
                             }
-                            
+
                             ctx.fillRect(c * pitch, screenRow * pitch, dotSize, dotSize);
                         }
                     }
                 }
             });
+
+            // --- RENDER TO MAIN CANVAS (WebGL) ---
+            gl.useProgram(program);
+
+            // Update Texture
+            gl.bindTexture(gl.TEXTURE_2D, texture);
+            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, offscreenCanvas);
+
+            // Set Uniforms
+            gl.uniform1f(uTimeLoc, timestamp / 1000);
+            gl.uniform1i(uVcrCurveLoc, filtersRef.current.vcrCurve ? 1 : 0);
+            gl.uniform1i(uScanlinesLoc, filtersRef.current.scanlines ? 1 : 0);
+            gl.uniform1i(uGlitchLoc, filtersRef.current.glitch ? 1 : 0);
+            gl.uniform1i(uRgbShiftLoc, filtersRef.current.rgbShift ? 1 : 0);
+            gl.uniform1i(uVignetteLoc, filtersRef.current.vignette ? 1 : 0);
+
+            // Draw
+            gl.enableVertexAttribArray(positionLocation);
+            gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+            gl.vertexAttribPointer(positionLocation, 2, gl.FLOAT, false, 0, 0);
+
+            gl.enableVertexAttribArray(texCoordLocation);
+            gl.bindBuffer(gl.ARRAY_BUFFER, texCoordBuffer);
+            gl.vertexAttribPointer(texCoordLocation, 2, gl.FLOAT, false, 0, 0);
+
+            gl.drawArrays(gl.TRIANGLES, 0, 6);
 
             animationFrameId = requestAnimationFrame(render);
         };
@@ -262,7 +440,7 @@ export default function CanvasLEDTicker({
             window.removeEventListener('resize', handleResize);
             cancelAnimationFrame(animationFrameId);
         };
-    }, [dotSize, dotColor, dotGap, rowSpacing, pageInterval, brightness, inactiveLEDOpacity, inactiveLEDColor]); // Re-init if layout config changes
+    }, [dotSize, dotColor, dotGap, rowSpacing, pageInterval, brightness, inactiveLEDOpacity, inactiveLEDColor, filters]); // Re-init if layout config changes
 
     return (
         <div ref={containerRef} style={{ width: '100vw', height: '100dvh', background: 'black', overflow: 'hidden' }}>

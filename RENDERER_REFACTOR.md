@@ -88,3 +88,4 @@ Render pixel with charColors[colorIndex]
 
 
 
+

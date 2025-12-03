@@ -10,6 +10,13 @@ export const LED_CONFIG = {
         dotGap: 2,
         dotColor: '#00ff00', // Default LED color (green)
         brightness: 100, // Brightness level (0-100)
+        filters: {
+            vcrCurve: false,
+            scanlines: false,
+            glitch: false,
+            rgbShift: false,
+            vignette: false,
+        },
     },
 
     // Layout Settings

@@ -10,6 +10,7 @@ import { useRemoteHost } from '@/hooks/useRemoteHost';
 import { ConnectionCodeOverlay } from '@/components/ConnectionCodeOverlay';
 import { RemoteConnectionState } from '@/lib/remoteControl';
 import LandingComponent from '@/components/LandingComponent';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 
 /**
  * Inner component that consumes ConfigContext
@@ -120,6 +121,7 @@ function TickerDisplay({
           inactiveLEDOpacity={config.inactiveLEDOpacity}
           inactiveLEDColor={config.inactiveLEDColor}
           speedMultiplier={config.speedMultiplier}
+          filters={config.filters}
         />
       </div>
     </>
@@ -197,22 +199,24 @@ export default function Home() {
   const peerIdToConnect = pendingRemoteId || connectToId;
 
   return (
-    <UIProvider>
-      <ConfigProvider
-        mode={isRemoteMode ? 'remote' : 'local'}
-        remotePeerId={peerIdToConnect}
-        onRemoteConnectionStateChange={setClientConnectionState}
-      >
-        <LandingComponent />
-        <TickerDisplay
-          remoteId={connectToId}
-          setRemoteId={handleSetRemoteId}
-          onDisconnect={handleDisconnect}
-          clientConnectionState={clientConnectionState}
-          pendingRemoteId={pendingRemoteId}
-        />
-      </ConfigProvider>
-    </UIProvider>
+    <ErrorBoundary>
+      <UIProvider>
+        <ConfigProvider
+          mode={isRemoteMode ? 'remote' : 'local'}
+          remotePeerId={peerIdToConnect}
+          onRemoteConnectionStateChange={setClientConnectionState}
+        >
+          <LandingComponent />
+          <TickerDisplay
+            remoteId={connectToId}
+            setRemoteId={handleSetRemoteId}
+            onDisconnect={handleDisconnect}
+            clientConnectionState={clientConnectionState}
+            pendingRemoteId={pendingRemoteId}
+          />
+        </ConfigProvider>
+      </UIProvider>
+    </ErrorBoundary>
   );
 }
 

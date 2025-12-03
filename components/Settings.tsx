@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Modal } from "./Modal";
 import { RowsManager } from "./config/RowsManager";
 import { DisplaySettings } from "./config/DisplaySettings";
+import { FilterSettings } from "./config/FilterSettings";
 import { SettingsButtons } from "./config/SettingsButtons";
 import { ClearSettingsButton } from "./config/ClearSettingsButton";
 import { RemoteConnectionUI } from "./RemoteConnectionUI";
@@ -111,6 +112,7 @@ export function Settings({
                     />
                     <RowsManager />
                     <DisplaySettings />
+                    <FilterSettings />
                     <SettingsButtons />
                     {/* <div className='flex flex-col items-center justify-center gap-4'>
                         <JSONSettingsEditorButton />

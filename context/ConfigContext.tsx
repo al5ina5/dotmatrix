@@ -26,7 +26,14 @@ interface ConfigContextType {
     inactiveLEDOpacity: number;
     inactiveLEDColor: string;
     speedMultiplier: number;
-    updateDisplaySetting: (field: string, value: number | string) => void;
+    filters: {
+        vcrCurve: boolean;
+        scanlines: boolean;
+        glitch: boolean;
+        rgbShift: boolean;
+        vignette: boolean;
+    };
+    updateDisplaySetting: (field: string, value: any) => void;
 
     // Reset
     resetToDefaults: () => void;
@@ -96,10 +103,21 @@ function validateStoredConfig(data: any): StoredConfig | null {
         // Use the same color as dotColor for backward compatibility
         data.displaySettings.inactiveLEDColor = data.displaySettings.dotColor || '#00ff00';
     }
-    
+
     // Migrate old configs without speedMultiplier setting
     if (typeof data.displaySettings.speedMultiplier !== 'number') {
         data.displaySettings.speedMultiplier = 1.0;
+    }
+
+    // Migrate old configs without filters setting
+    if (!data.displaySettings.filters) {
+        data.displaySettings.filters = {
+            vcrCurve: false,
+            scanlines: false,
+            glitch: false,
+            rgbShift: false,
+            vignette: false,
+        };
     }
 
     return data as StoredConfig;
@@ -131,6 +149,7 @@ export function ConfigProvider({
             inactiveLEDOpacity: 8, // 8% opacity for inactive LEDs
             inactiveLEDColor: LED_CONFIG.display.dotColor, // Use same color as active LEDs by default
             speedMultiplier: 1.0, // 1.0 = normal speed
+            filters: { ...LED_CONFIG.display.filters },
         }
     };
 
@@ -281,7 +300,14 @@ export function ConfigProvider({
                     brightness: remoteDisplaySettings.brightness || 100,
                     inactiveLEDOpacity: remoteDisplaySettings.inactiveLEDOpacity ?? 8,
                     inactiveLEDColor: remoteDisplaySettings.inactiveLEDColor || remoteDisplaySettings.dotColor || '#00ff00',
-                    speedMultiplier: remoteDisplaySettings.speedMultiplier ?? 1.0
+                    speedMultiplier: remoteDisplaySettings.speedMultiplier ?? 1.0,
+                    filters: remoteDisplaySettings.filters || {
+                        vcrCurve: false,
+                        scanlines: false,
+                        glitch: false,
+                        rgbShift: false,
+                        vignette: false,
+                    }
                 }
             };
         }
@@ -374,7 +400,14 @@ export function ConfigProvider({
                 brightness: remoteDisplaySettings.brightness || 100,
                 inactiveLEDOpacity: remoteDisplaySettings.inactiveLEDOpacity ?? 8,
                 inactiveLEDColor: remoteDisplaySettings.inactiveLEDColor || remoteDisplaySettings.dotColor || '#00ff00',
-                speedMultiplier: remoteDisplaySettings.speedMultiplier ?? 1.0
+                speedMultiplier: remoteDisplaySettings.speedMultiplier ?? 1.0,
+                filters: remoteDisplaySettings.filters || {
+                    vcrCurve: false,
+                    scanlines: false,
+                    glitch: false,
+                    rgbShift: false,
+                    vignette: false,
+                }
             };
         } else {
             currentDisplaySettings = displaySettings;
@@ -395,6 +428,13 @@ export function ConfigProvider({
             inactiveLEDOpacity: currentDisplaySettings?.inactiveLEDOpacity ?? 8,
             inactiveLEDColor: currentDisplaySettings?.inactiveLEDColor || currentDisplaySettings?.dotColor || '#00ff00',
             speedMultiplier: currentDisplaySettings?.speedMultiplier ?? 1.0,
+            filters: currentDisplaySettings?.filters || {
+                vcrCurve: false,
+                scanlines: false,
+                glitch: false,
+                rgbShift: false,
+                vignette: false,
+            },
             updateDisplaySetting,
             resetToDefaults,
             resetRows,

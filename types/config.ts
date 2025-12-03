@@ -3,6 +3,22 @@ import { LEDRowConfig } from '@/config/led.config';
 /**
  * Display settings for the LED matrix
  */
+export interface FilterSettings {
+    /** Enable VCR curve distortion */
+    vcrCurve: boolean;
+    /** Enable scanlines effect */
+    scanlines: boolean;
+    /** Enable glitch effect */
+    glitch: boolean;
+    /** Enable RGB shift effect */
+    rgbShift: boolean;
+    /** Enable vignette effect */
+    vignette: boolean;
+}
+
+/**
+ * Display settings for the LED matrix
+ */
 export interface DisplaySettings {
     /** Size of each LED dot in pixels */
     dotSize: number;
@@ -22,6 +38,8 @@ export interface DisplaySettings {
     inactiveLEDColor: string;
     /** Animation speed multiplier (0.25x to 4x, where 1.0 is normal speed) */
     speedMultiplier: number;
+    /** Post-processing filter settings */
+    filters: FilterSettings;
 }
 
 /**
